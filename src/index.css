@@ -1,0 +1,99 @@
+/* Import Google Fonts — Playfair Display for headings, DM Sans for body */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+/* Tailwind base layers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Global Base Styles ---- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: #111827;
+  background-color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* ---- Custom Utility Classes ---- */
+.section-padding {
+  padding: 5rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding: 5rem 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section-padding {
+    padding: 5rem 6rem;
+  }
+}
+
+/* ---- Ad Section Keyframes ---- */
+@keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+@keyframes fadeInUp  { from{opacity:0;transform:translateY(36px)} to{opacity:1;transform:translateY(0)} }
+@keyframes scaleIn   { from{opacity:0;transform:scale(.82)} to{opacity:1;transform:scale(1)} }
+@keyframes slideLeft { from{opacity:0;transform:translateX(-50px)} to{opacity:1;transform:translateX(0)} }
+@keyframes slideRight{ from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
+@keyframes logoBuild { 0%{opacity:0;transform:scale(.72) translateY(24px)} 70%{opacity:1;transform:scale(1.04) translateY(0)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+@keyframes glow      { 0%,100%{filter:drop-shadow(0 0 10px rgba(46,111,217,.45))} 50%{filter:drop-shadow(0 0 28px rgba(46,111,217,.9))} }
+@keyframes particleFloat {
+  0%  {transform:translateY(80px) translateX(0);opacity:0}
+  8%  {opacity:.6}
+  92% {opacity:.2}
+  100%{transform:translateY(-220px) translateX(var(--dx,18px));opacity:0}
+}
+@keyframes scanMove  { from{transform:translateY(-100%)} to{transform:translateY(110vh)} }
+@keyframes pulseRing { 0%,100%{opacity:.2;transform:scale(1)} 50%{opacity:.5;transform:scale(1.06)} }
+@keyframes heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+/* ── Performance & Smoothness ── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* GPU-accelerate common animated elements */
+.group, button, a, [class*="transition"] {
+  will-change: auto;
+}
+
+img {
+  content-visibility: auto;
+}
+
+/* Prevent layout shift on images */
+img[loading="lazy"] {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  min-height: 1px;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #1B3A6B;
+  border-radius: 3px;
+}
+
+/* Hardware acceleration for animated elements */
+.gpu-accel { transform: translateZ(0); backface-visibility: hidden; }
