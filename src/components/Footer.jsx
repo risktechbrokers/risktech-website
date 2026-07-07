@@ -128,8 +128,8 @@ const Footer = ({ navigate = () => {} }) => {
               <div className="flex gap-3">
                 <MapPin size={15} className="text-blue-300 mt-1 flex-shrink-0" />
                 <p className="text-blue-200/70 text-sm leading-relaxed">
-                  Block D, Shop 5, Abibat Mogaji Shopping Complex,
-                  Odo-Eran, Ogba, Ikeja, Lagos State.
+                  Shop 41, Alakija Shopping Complex,
+                  WAEC Street, Jibowu, Yaba, Lagos.
                 </p>
               </div>
             </div>

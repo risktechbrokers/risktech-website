@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const IntroOverlay = ({ onComplete }) => {
   const [phase, setPhase] = useState("show");
+  const isMobile = useRef(typeof window !== "undefined" && window.innerWidth < 768);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("fadeout"), 3200);
@@ -11,6 +12,8 @@ const IntroOverlay = ({ onComplete }) => {
 
   if (phase === "done") return null;
 
+  const mobile = isMobile.current;
+
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9999,
@@ -19,28 +22,34 @@ const IntroOverlay = ({ onComplete }) => {
       opacity: phase === "fadeout" ? 0 : 1,
       transition:"opacity 0.8s ease-in-out",
       background:"linear-gradient(160deg, #010817 0%, #06152e 25%, #0a2350 55%, #071a38 80%, #030d1f 100%)",
+      willChange:"opacity",
+      transform:"translateZ(0)",
     }}>
-      {/* ── Ambient glow orbs ── */}
+      {/* ── Ambient glow orbs — lighter blur on mobile ── */}
       <div style={{
         position:"absolute", top:"-10%", left:"-5%",
-        width:600, height:600, borderRadius:"50%",
+        width: mobile ? 300 : 600, height: mobile ? 300 : 600, borderRadius:"50%",
         background:"radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 65%)",
-        filter:"blur(80px)", pointerEvents:"none",
-        animation:"rtDrift 9s ease-in-out infinite alternate",
+        filter: mobile ? "blur(30px)" : "blur(80px)", pointerEvents:"none",
+        animation: mobile ? "none" : "rtDrift 9s ease-in-out infinite alternate",
+        transform:"translateZ(0)",
       }}/>
       <div style={{
         position:"absolute", bottom:"-15%", right:"-5%",
-        width:520, height:520, borderRadius:"50%",
+        width: mobile ? 260 : 520, height: mobile ? 260 : 520, borderRadius:"50%",
         background:"radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 65%)",
-        filter:"blur(90px)", pointerEvents:"none",
-        animation:"rtDrift 11s ease-in-out infinite alternate-reverse",
+        filter: mobile ? "blur(25px)" : "blur(90px)", pointerEvents:"none",
+        animation: mobile ? "none" : "rtDrift 11s ease-in-out infinite alternate-reverse",
+        transform:"translateZ(0)",
       }}/>
-      <div style={{
-        position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        width:760, height:420, borderRadius:"50%",
-        background:"radial-gradient(ellipse, rgba(30,90,220,0.15) 0%, transparent 70%)",
-        filter:"blur(70px)", pointerEvents:"none",
-      }}/>
+      {!mobile && (
+        <div style={{
+          position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%) translateZ(0)",
+          width:760, height:420, borderRadius:"50%",
+          background:"radial-gradient(ellipse, rgba(30,90,220,0.15) 0%, transparent 70%)",
+          filter:"blur(70px)", pointerEvents:"none",
+        }}/>
+      )}
 
       {/* ── Fine grid texture ── */}
       <div style={{
@@ -51,13 +60,16 @@ const IntroOverlay = ({ onComplete }) => {
         WebkitMaskImage:"radial-gradient(ellipse at center, black 40%, transparent 85%)",
       }}/>
 
-      {/* ── Sweeping light beam ── */}
-      <div style={{
-        position:"absolute", top:0, bottom:0, width:"40%",
-        background:"linear-gradient(100deg, transparent 20%, rgba(140,190,255,0.05) 50%, transparent 80%)",
-        animation:"rtSweep 5s ease-in-out infinite",
-        pointerEvents:"none",
-      }}/>
+      {/* ── Sweeping light beam — desktop only ── */}
+      {!mobile && (
+        <div style={{
+          position:"absolute", top:0, bottom:0, width:"40%",
+          background:"linear-gradient(100deg, transparent 20%, rgba(140,190,255,0.05) 50%, transparent 80%)",
+          animation:"rtSweep 5s ease-in-out infinite",
+          pointerEvents:"none",
+          transform:"translateZ(0)",
+        }}/>
+      )}
 
       {/* ── Content, directly on the background ── */}
       <div style={{

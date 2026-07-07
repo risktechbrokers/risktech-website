@@ -79,8 +79,11 @@ const AdSection = () => {
                   style={{
                     opacity: filmReady ? 1 : 0,
                     transition: "opacity 0.6s ease",
+                    willChange: "opacity",
+                    transform: "translateZ(0)",
                   }}
                   allow="autoplay"
+                  loading="lazy"
                   onLoad={() => setFilmReady(true)}
                 />
               )}

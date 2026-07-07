@@ -60,13 +60,12 @@ body {
 @keyframes heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
 
 /* ── Performance & Smoothness ── */
-html {
-  scroll-behavior: smooth;
-}
 
-/* GPU-accelerate common animated elements */
-.group, button, a, [class*="transition"] {
-  will-change: auto;
+/* GPU-accelerate framer-motion and animated elements */
+[data-framer-component-type], [style*="transform"], [style*="opacity"],
+.motion-safe\:animate-none, [class*="motion"] {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 img {
@@ -97,3 +96,39 @@ img[loading="lazy"] {
 
 /* Hardware acceleration for animated elements */
 .gpu-accel { transform: translateZ(0); backface-visibility: hidden; }
+
+/* Mobile performance — reduce expensive effects */
+@media (max-width: 768px) {
+  /* Disable backdrop-blur on mobile — very GPU expensive */
+  .backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Smoother touch scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Reduce animation intensity on mobile */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-pulse {
+      animation-duration: 2s;
+    }
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* iOS safe area support */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}

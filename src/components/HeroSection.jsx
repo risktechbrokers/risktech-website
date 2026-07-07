@@ -3,10 +3,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, PhoneCall, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { HERO_SLIDES } from "../data/services";
 
+// Preload all hero images for instant slide transitions
+const preloadImages = () => {
+  HERO_SLIDES.forEach((slide, i) => {
+    if (i === 0) return; // first already loaded via <link rel="preload">
+    const img = new Image();
+    img.src = slide.image;
+  });
+};
+
 const HeroSection = ({ navigate }) => {
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    // Preload remaining slides after initial render
+    const timer = setTimeout(preloadImages, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const goTo = useCallback((index, dir = 1) => {
     setDirection(dir);
@@ -38,12 +53,12 @@ const HeroSection = ({ navigate }) => {
         <motion.div
           key={current}
           custom={direction}
-          initial={{ opacity: 0, scale: 1.08 }}
+          initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
+          transition={{ duration: 0.9, ease: "easeInOut" }}
           className="absolute inset-0"
-          style={{ background: slide.gradient || "linear-gradient(135deg, #0f2447, #1B3A6B)" }}
+          style={{ background: slide.gradient || "linear-gradient(135deg, #0f2447, #1B3A6B)", willChange: "opacity, transform" }}
         >
           <img
             src={slide.image}

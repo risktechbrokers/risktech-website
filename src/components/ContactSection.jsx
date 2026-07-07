@@ -329,7 +329,7 @@ const ContactSection = ({ preselectedService = "" }) => {
             {[
               {icon:Phone, color:"bg-blue-100 text-blue-700",   label:"Phone",  value:"08067514506",              href:"tel:08067514506"},
               {icon:Mail,  color:"bg-green-100 text-green-700", label:"Email",  value:"risktechbrokers@gmail.com", href:"mailto:risktechbrokers@gmail.com"},
-              {icon:MapPin,color:"bg-orange-100 text-orange-700",label:"Office",value:"Block D, Shop 5, Abibat Mogaji Shopping Complex, Odo-Eran, Opposite Water Corporation, Ogba, Ikeja, Lagos State.", href:null},
+              {icon:MapPin,color:"bg-orange-100 text-orange-700",label:"Office",value:"Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos.", href:null},
             ].map(c=>{
               const Icon=c.icon;
               return (

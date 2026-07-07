@@ -162,9 +162,9 @@ const AboutSection = () => {
 
               <div className="mt-5 pt-5 border-t border-white/20 text-blue-100 text-xs leading-relaxed">
                 <p className="font-semibold text-white text-sm mb-1">Our Office</p>
-                Block D, Shop 5, Abibat Mogaji Shopping Complex,<br />
-                Odo-Eran, Opposite Water Corporation,<br />
-                Ogba, Ikeja, Lagos State.
+                Shop 41, Alakija Shopping Complex,<br />
+                WAEC Street, Jibowu,<br />
+                Yaba, Lagos.
               </div>
             </div>
           </motion.div>

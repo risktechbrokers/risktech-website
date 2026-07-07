@@ -5,7 +5,11 @@
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/risktech_logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0B1F4B" />
 
     <!-- ── Security hardening ── -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -18,7 +22,7 @@
     <meta name="keywords" content="insurance broker Lagos, NAICOM licensed broker, auto insurance Nigeria, health insurance Lagos, life insurance Nigeria, business insurance, property insurance, RiskTech Insurance Brokers" />
     <meta name="author" content="RiskTech Insurance Brokers Limited" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://risktechbrokers.com/" />
+    <link rel="canonical" href="https://www.risktechinsurance.com/" />
 
     <!-- ── Open Graph (Facebook / WhatsApp previews) ── -->
     <meta property="og:type" content="website" />
@@ -42,14 +46,14 @@
       "@type": "InsuranceAgency",
       "name": "RiskTech Insurance Brokers Limited",
       "description": "NAICOM Licensed Insurance Broker in Lagos, Nigeria providing Auto, Health, Life, Business and Property insurance solutions.",
-      "url": "https://risktechbrokers.com",
-      "telephone": "+2348055532488",
+      "url": "https://www.risktechinsurance.com",
+      "telephone": "+2348067514506",
       "email": "risktechbrokers@gmail.com",
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Block D, Shop 5, Abibat Mogaji Shopping Complex, Odo-Eran, Opposite Water Corporation, Ogba",
-        "addressLocality": "Ikeja",
-        "addressRegion": "Lagos State",
+        "streetAddress": "Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu",
+        "addressLocality": "Yaba",
+        "addressRegion": "Lagos",
         "addressCountry": "NG"
       },
       "openingHoursSpecification": [
@@ -64,6 +68,14 @@
     <!-- ── Google Fonts ── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- ── Preconnect to image CDNs for faster loads ── -->
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
+    <!-- ── Preload logo and first hero image ── -->
+    <link rel="preload" href="/risktech_logo.png" as="image" />
+    <link rel="preload" href="https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=1920&q=85" as="image" />
   </head>
   <body>
     <div id="root"></div>
