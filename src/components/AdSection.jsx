@@ -1,8 +1,9 @@
 // ============================================================
 // AD SECTION — RiskTech Hero Film
-// Embeds the standalone animation (risktech-film.html) in an
-// isolated iframe. The film loads lazily (only when near the
-// viewport) and shows a polished placeholder until it's ready.
+// Embeds the standalone animation in an isolated iframe.
+// - Loads only when near viewport
+// - Pauses rendering when scrolled away (saves GPU on slow devices)
+// - Shows polished placeholder until ready
 // ============================================================
 
 import { useState, useRef, useEffect } from "react";
@@ -10,21 +11,36 @@ import { motion } from "framer-motion";
 import { Play, Film } from "lucide-react";
 
 const AdSection = () => {
-  const [loadFilm, setLoadFilm]   = useState(false);
-  const [filmReady, setFilmReady] = useState(false);
+  const [loadFilm, setLoadFilm]     = useState(false);
+  const [filmReady, setFilmReady]   = useState(false);
+  const [isVisible, setIsVisible]   = useState(false);
   const holderRef = useRef(null);
   const iframeRef = useRef(null);
 
-  // Lazy-load: mount iframe when section comes near the viewport
+  // Lazy-load: mount iframe when section is near viewport
   useEffect(() => {
     const el = holderRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setLoadFilm(true); observer.disconnect(); } },
-      { rootMargin: "300px" }
+
+    const loadObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setLoadFilm(true);
+          loadObserver.disconnect();
+        }
+      },
+      { rootMargin: "150px" } // reduced from 300px — load later
     );
-    observer.observe(el);
-    return () => observer.disconnect();
+
+    // Visibility observer: pause iframe via CSS when off-screen
+    const visObserver = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.05 }
+    );
+
+    loadObserver.observe(el);
+    visObserver.observe(el);
+    return () => { loadObserver.disconnect(); visObserver.disconnect(); };
   }, []);
 
   return (
@@ -67,9 +83,9 @@ const AdSection = () => {
             <div
               ref={holderRef}
               className="relative w-full overflow-hidden rounded-2xl bg-[#050b1a]"
-              style={{ aspectRatio: "16 / 9" }}
+              style={{ aspectRatio: "16 / 9", transform: "translateZ(0)" }}
             >
-              {/* Film iframe — only mounted once section is near viewport */}
+              {/* Film iframe — mounted once visible, GPU layer, paused when off-screen */}
               {loadFilm && (
                 <iframe
                   ref={iframeRef}
@@ -81,24 +97,25 @@ const AdSection = () => {
                     transition: "opacity 0.6s ease",
                     willChange: "opacity",
                     transform: "translateZ(0)",
+                    // When off-screen, hint to browser to deprioritize this frame
+                    visibility: isVisible ? "visible" : "hidden",
                   }}
                   allow="autoplay"
                   loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => setFilmReady(true)}
                 />
               )}
 
-              {/* Placeholder — shown until iframe reports it has loaded */}
+              {/* Placeholder — shown until iframe loads */}
               {(!loadFilm || !filmReady) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-                  {/* Animated ring */}
                   <div className="relative">
                     <div className="w-20 h-20 rounded-full border-2 border-blue-500/30 flex items-center justify-center">
                       <div className="w-14 h-14 rounded-full bg-blue-600/20 border border-blue-400/40 flex items-center justify-center">
                         <Play size={24} className="text-blue-300 ml-1" />
                       </div>
                     </div>
-                    {/* Spinning ring */}
                     <div
                       className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-400"
                       style={{ animation: "spin 1.4s linear infinite" }}
@@ -112,16 +129,13 @@ const AdSection = () => {
             </div>
           </div>
 
-          {/* Caption below player */}
           <p className="text-center text-gray-600 text-xs mt-4 tracking-wide">
             RiskTech Insurance Brokers Limited &nbsp;&middot;&nbsp; NAICOM Licence No. 1271
           </p>
         </motion.div>
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </section>
   );
 };

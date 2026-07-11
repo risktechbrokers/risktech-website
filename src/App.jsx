@@ -23,9 +23,18 @@ const PageLoader = () => (
   </div>
 );
 
+// Show intro overlay only once per browser session
+const hasSeenIntro = () => {
+  try { return !!sessionStorage.getItem("rt_intro_seen"); } catch { return false; }
+};
+const markIntroSeen = () => {
+  try { sessionStorage.setItem("rt_intro_seen", "1"); } catch {}
+};
+
 function App() {
-  const [currentPage, setCurrentPage]     = useState("home");
-  const [selectedService, setSelectedService] = useState(""); // for smart quote form
+  const [currentPage, setCurrentPage]         = useState("home");
+  const [selectedService, setSelectedService] = useState("");
+  const [showOverlay, setShowOverlay]         = useState(!hasSeenIntro());
 
   const navigate = useCallback((page, serviceType = "") => {
     setCurrentPage(page);
@@ -34,7 +43,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // Called from ServicesPage when user clicks "Get a Quote" on a specific service
   const handleGetQuote = useCallback((serviceTitle) => {
     setSelectedService(serviceTitle);
     setCurrentPage("home");
@@ -44,9 +52,14 @@ function App() {
     }, 400);
   }, []);
 
+  const handleOverlayComplete = useCallback(() => {
+    markIntroSeen();
+    setShowOverlay(false);
+  }, []);
+
   return (
     <div className="min-h-screen">
-      <IntroOverlay onComplete={() => {}} />
+      {showOverlay && <IntroOverlay onComplete={handleOverlayComplete} />}
       <div>
         <Navbar navigate={navigate} currentPage={currentPage} />
 
