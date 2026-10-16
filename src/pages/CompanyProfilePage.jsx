@@ -1,31 +1,10 @@
 import { motion } from "framer-motion";
+import { LEADERS } from "../data/leaders";
 import { ArrowLeft, Shield, Target, Award, Users, CheckCircle, MapPin, Phone, Mail, Star, Download } from "lucide-react";
 
 const fadeUp = { hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } };
 
-const LEADERSHIP = [
-  {
-    name: "Olowosuna-Davies Adamoh Yetunde",
-    role: "Chairman",
-    initials: "OY",
-    color: "from-blue-700 to-blue-500",
-    bio: "A seasoned business woman and civil servant with a Higher National Diploma in Business Administration from Lagos State Polytechnic. A Chartered Member of the Institute of Public Service of Nigeria with over 25 years of public service experience in Lagos State. She brings extensive experience in large-scale distribution and business management.",
-  },
-  {
-    name: "Taiwo Morufat Abosede",
-    role: "Director",
-    initials: "TM",
-    color: "from-rose-600 to-pink-500",
-    bio: "A graduate of Banking & Finance from Ekiti State University, Ado-Ekiti (2016) and a Senior Financial Advisor at Consolidated Hallmark Insurance. She brings 12 years as Sales Manager at Abimbola & Sons Bakery and 5 years in Business Development, with a proven track record of turning businesses around for higher productivity and profitability. She oversees leadership, administration and business development.",
-  },
-  {
-    name: "Olowosuna Fathiu Olatubosun",
-    role: "Head of Information Technology",
-    initials: "OF",
-    color: "from-emerald-600 to-teal-500",
-    bio: "A technology professional based in Lagos, Nigeria, working across web development, mobile apps, cybersecurity, and digital product design. As Head of IT, he built and manages RiskTech's entire digital presence, from the company website to its online forms and automated systems, giving clients a smooth experience from anywhere in the world.",
-  },
-];
+const LEADERSHIP = LEADERS;
 
 const SERVICES_LIST = [
   "Insurance Broking across all classes",
@@ -76,7 +55,6 @@ const CompanyProfilePage = ({ navigate }) => (
             <div className="flex flex-wrap gap-3">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">🏛️ CAC Registered</div>
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">🏆 NAICOM Licensed</div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">📋 NCRIB Member</div>
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">⚡ Est. 2024</div>
             </div>
           </div>
@@ -111,13 +89,13 @@ const CompanyProfilePage = ({ navigate }) => (
           </h2>
           <div className="space-y-4 text-gray-600 leading-relaxed">
             <p>
-              <strong className="text-gray-900">RiskTech Insurance Brokers Limited</strong> is a Limited Liability Company incorporated with an authorised share capital of ₦5,000,000. The company's major business is insurance broking, providing quality, effective and personalised service to insurance buyers across various sectors locally and internationally.
+              <strong className="text-gray-900">RiskTech Insurance Brokers Limited</strong> is a limited liability company registered with the Corporate Affairs Commission (RC 7685222) in July 2024. The company's principal business is insurance broking, providing quality, effective and personalised service to insurance buyers across various sectors locally and internationally.
             </p>
             <p>
               Our duty is to provide tailor-made insurance policies for individuals and organisations by negotiating with insurance companies to secure reasonable rates, flexible terms and maximum cover, so our clients pay as little as possible for the best cover available.
             </p>
             <p>
-              We are registered with the <strong>Corporate Affairs Commission (CAC)</strong>, licensed by the <strong>National Insurance Commission (NAICOM)</strong> under the Nigerian Insurance Industry Reform Act 2025 (Licence No. 1271, valid April 2026 – April 2031), and maintain professional indemnity cover of ₦10,000,000.
+              We are registered with the <strong>Corporate Affairs Commission (CAC)</strong>, licensed by the <strong>National Insurance Commission (NAICOM)</strong> under the Nigerian Insurance Industry Reform Act 2025 (Licence No. 1271, valid 20 April 2026 to 19 April 2031), and maintain professional indemnity cover of ₦100,000,000.
             </p>
           </div>
         </motion.div>

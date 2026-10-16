@@ -1,4 +1,4 @@
-import { useState, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import IntroOverlay from "./components/IntroOverlay";
 import Navbar from "./components/Navbar";
 import HeroSection from "./components/HeroSection";
@@ -8,10 +8,23 @@ import TrustSection from "./components/TrustSection";
 import AdSection from "./components/AdSection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
+import FaqSection from "./components/FaqSection";
+import StatsBand from "./components/StatsBand";
+import MotorPromo from "./components/MotorPromo";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 const ServicesPage      = lazy(() => import("./pages/ServicesPage"));
 const CompanyProfilePage= lazy(() => import("./pages/CompanyProfilePage"));
 const ClaimsPage        = lazy(() => import("./pages/ClaimsPage"));
+const BuyPage           = lazy(() => import("./pages/BuyPage"));
+const AdminPage         = lazy(() => import("./pages/AdminPage"));
+
+// Real URLs so pages can be linked to directly (e.g. /buy, /admin)
+const PATHS = { home: "/", services: "/services", "company-profile": "/company-profile", claims: "/claims", buy: "/buy", admin: "/admin" };
+const pageFromPath = () => {
+  const p = window.location.pathname.replace(/\/+$/, "") || "/";
+  return Object.keys(PATHS).find((k) => PATHS[k] === p) || "home";
+};
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#0B1F4B]">
@@ -32,11 +45,19 @@ const markIntroSeen = () => {
 };
 
 function App() {
-  const [currentPage, setCurrentPage]         = useState("home");
+  const [currentPage, setCurrentPage]         = useState(pageFromPath);
   const [selectedService, setSelectedService] = useState("");
-  const [showOverlay, setShowOverlay]         = useState(!hasSeenIntro());
+  const [showOverlay, setShowOverlay]         = useState(() => !hasSeenIntro() && pageFromPath() === "home");
+
+  useEffect(() => {
+    const onPop = () => setCurrentPage(pageFromPath());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const navigate = useCallback((page, serviceType = "") => {
+    const path = PATHS[page] || "/";
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setCurrentPage(page);
     if (serviceType) setSelectedService(serviceType);
     else if (page !== "home") setSelectedService("");
@@ -60,8 +81,12 @@ function App() {
   return (
     <div className="min-h-screen">
       {showOverlay && <IntroOverlay onComplete={handleOverlayComplete} />}
-      <div>
+      {currentPage === "admin" && (
+        <Suspense fallback={<PageLoader/>}><AdminPage navigate={navigate} /></Suspense>
+      )}
+      <div style={currentPage === "admin" ? { display: "none" } : undefined}>
         <Navbar navigate={navigate} currentPage={currentPage} />
+        {currentPage !== "admin" && <WhatsAppButton />}
 
         {currentPage === "services" && (
           <main className="pt-16">
@@ -81,6 +106,15 @@ function App() {
           </main>
         )}
 
+        {currentPage === "buy" && (
+          <main className="pt-16">
+            <Suspense fallback={<PageLoader/>}>
+              <BuyPage navigate={navigate} />
+            </Suspense>
+            <Footer navigate={navigate} />
+          </main>
+        )}
+
         {currentPage === "claims" && (
           <main className="pt-16">
             <Suspense fallback={<PageLoader/>}>
@@ -93,10 +127,13 @@ function App() {
         {currentPage === "home" && (
           <main>
             <HeroSection navigate={navigate} />
+            <StatsBand />
             <ServicesSection navigate={navigate} />
+            <MotorPromo navigate={navigate} />
             <AboutSection />
             <TrustSection />
             <AdSection />
+            <FaqSection />
             <ContactSection preselectedService={selectedService} />
             <Footer navigate={navigate} />
           </main>

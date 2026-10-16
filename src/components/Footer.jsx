@@ -8,7 +8,8 @@
 // - Copyright bar
 // ============================================================
 
-import { Phone, Mail, MapPin, ArrowRight, ShieldCheck } from "lucide-react";
+import { Phone, Mail, MapPin, ArrowRight, ShieldCheck, MessageCircle } from "lucide-react";
+import { waLink } from "../../shared/motor.js";
 
 const Footer = ({ navigate = () => {} }) => {
   const currentYear = new Date().getFullYear();
@@ -24,7 +25,9 @@ const Footer = ({ navigate = () => {} }) => {
     { label: "About Us",        action: () => scrollTo("about") },
     { label: "Company Profile", action: () => navigate("company-profile") },
     { label: "Why RiskTech",    action: () => scrollTo("trust") },
+    { label: "Buy Motor Insurance", action: () => navigate("buy") },
     { label: "Make a Claim",    action: () => navigate("claims") },
+    { label: "FAQ",             action: () => scrollTo("faq") },
     { label: "Contact Us",      action: () => scrollTo("contact") },
   ];
 
@@ -117,6 +120,12 @@ const Footer = ({ navigate = () => {} }) => {
                 <Phone size={15} className="text-blue-300 mt-0.5 flex-shrink-0" />
                 <a href="tel:08067514506" className="text-blue-200/70 hover:text-white text-sm transition-colors">
                   08067514506
+                </a>
+              </div>
+              <div className="flex gap-3">
+                <MessageCircle size={15} className="text-blue-300 mt-0.5 flex-shrink-0" />
+                <a href={waLink("Hello RiskTech, I would like some help with insurance.")} target="_blank" rel="noreferrer" className="text-blue-200/70 hover:text-white text-sm transition-colors">
+                  WhatsApp: 0916 324 3280
                 </a>
               </div>
               <div className="flex gap-3">

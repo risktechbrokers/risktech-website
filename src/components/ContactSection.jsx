@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import emailjs from "@emailjs/browser";
-import { Phone, Mail, MapPin, Send, CheckCircle, AlertCircle, Globe, ChevronDown } from "lucide-react";
+import { Phone, Mail, MapPin, Send, CheckCircle, AlertCircle, Globe, ChevronDown, MessageCircle } from "lucide-react";
+import { waLink } from "../../shared/motor.js";
 
 const EMAILJS_SERVICE_ID  = "service_r9hj031";
 const EMAILJS_TEMPLATE_ID = "template_20jtn8c";
@@ -328,6 +329,7 @@ const ContactSection = ({ preselectedService = "" }) => {
             </div>
             {[
               {icon:Phone, color:"bg-blue-100 text-blue-700",   label:"Phone",  value:"08067514506",              href:"tel:08067514506"},
+              {icon:MessageCircle, color:"bg-emerald-100 text-emerald-700", label:"WhatsApp (customer care)", value:"0916 324 3280", href:waLink("Hello RiskTech, I would like some help with insurance."), ext:true},
               {icon:Mail,  color:"bg-green-100 text-green-700", label:"Email",  value:"risktechbrokers@gmail.com", href:"mailto:risktechbrokers@gmail.com"},
               {icon:MapPin,color:"bg-orange-100 text-orange-700",label:"Office",value:"Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos.", href:null},
             ].map(c=>{
@@ -337,7 +339,7 @@ const ContactSection = ({ preselectedService = "" }) => {
                   <div className={`w-11 h-11 rounded-xl ${c.color} flex items-center justify-center flex-shrink-0`}><Icon size={20}/></div>
                   <div>
                     <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">{c.label}</p>
-                    {c.href ? <a href={c.href} className="text-gray-900 font-semibold text-sm hover:text-blue-600 transition-colors">{c.value}</a>
+                    {c.href ? <a href={c.href} {...(c.ext ? {target:"_blank", rel:"noreferrer"} : {})} className="text-gray-900 font-semibold text-sm hover:text-blue-600 transition-colors">{c.value}</a>
                       : <p className="text-gray-900 font-semibold text-sm leading-relaxed">{c.value}</p>}
                   </div>
                 </div>
@@ -364,6 +366,31 @@ const ContactSection = ({ preselectedService = "" }) => {
             </div>
           </motion.div>
         </div>
+
+        {/* Map */}
+        <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.6}} className="mt-12">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+            <div>
+              <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">Visit Us</span>
+              <h3 className="text-gray-900 text-2xl font-bold mt-1" style={{fontFamily:"'Playfair Display',serif"}}>Our Office in Yaba, Lagos</h3>
+              <p className="text-gray-500 text-sm mt-1">Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos.</p>
+            </div>
+            <a href="https://www.google.com/maps/dir/?api=1&destination=Alakija+Shopping+Complex+WAEC+Street+Jibowu+Yaba+Lagos" target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl self-start sm:self-auto">
+              <MapPin size={16}/> Get directions
+            </a>
+          </div>
+          <div className="rounded-3xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-[4/3] sm:aspect-[21/9]">
+            <iframe
+              title="RiskTech office location on Google Maps"
+              src="https://www.google.com/maps?q=Alakija+Shopping+Complex,+WAEC+Street,+Jibowu,+Yaba,+Lagos&z=16&output=embed"
+              className="w-full h-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          </div>
+        </motion.div>
       </div>
     </section>
   );

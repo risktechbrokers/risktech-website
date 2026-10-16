@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { LEADERS } from "../data/leaders";
 import { Shield, Target, Award, Users, CheckCircle } from "lucide-react";
 
 const stats = [
@@ -17,23 +18,7 @@ const values = [
   { title: "Reliability",    desc: "We are here when you need us most, especially at claims time." },
 ];
 
-const team = [
-  {
-    name: "Olowosuna-Davies Adamoh Yetunde",
-    role: "Chairman",
-    bio: "A business woman and civil servant with a Higher National Diploma in Business Administration from Lagos State Polytechnic. A Chartered Member of the Institute of Public Service of Nigeria with over 25 years of public service experience in Lagos State.",
-  },
-  {
-    name: "Taiwo Morufat Abosede",
-    role: "Director",
-    bio: "A graduate of Banking & Finance from Ekiti State University (2016) and a Senior Financial Advisor at Consolidated Hallmark Insurance. She brings 12 years as Sales Manager at Abimbola & Sons Bakery and 5 years in Business Development, with a strong track record of turning businesses around for higher productivity.",
-  },
-  {
-    name: "Olowosuna Fathiu Olatubosun",
-    role: "Head of Information Technology",
-    bio: "A technology professional based in Lagos, Nigeria, working across web development, mobile apps, cybersecurity, and digital product design. As Head of IT, he built and manages RiskTech's entire digital presence, from the company website to its online forms and automated systems.",
-  },
-];
+const team = LEADERS;
 
 const AboutSection = () => {
   return (
@@ -124,7 +109,7 @@ const AboutSection = () => {
                 Company at a Glance
               </p>
               <p className="text-white text-xs text-blue-200 mb-6 leading-relaxed">
-                Registered with CAC • Licensed by NAICOM • Member of NCRIB
+                Registered with CAC • Licensed by NAICOM • ₦100m Professional Indemnity
               </p>
 
               <div className="grid grid-cols-2 gap-4">
@@ -217,7 +202,7 @@ const AboutSection = () => {
           <div className="w-12 h-1 bg-blue-700 mx-auto rounded-full" />
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {team.map((member, i) => (
             <motion.div
               key={member.name}

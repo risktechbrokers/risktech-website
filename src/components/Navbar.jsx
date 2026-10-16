@@ -43,6 +43,7 @@ const Navbar = ({ navigate, currentPage }) => {
   const NAV_LINKS = [
     { label: "Home",            action: () => scrollTo("home") },
     { label: "Services",        action: () => navigate("services"), active: isServices },
+    { label: "Buy Motor",       action: () => navigate("buy"), active: currentPage === "buy" },
     { label: "About",           action: () => scrollTo("about") },
     { label: "Why Us",          action: () => scrollTo("trust") },
     { label: "Company Profile", action: () => navigate("company-profile"), active: isProfile },
