@@ -162,10 +162,9 @@ const BuyPage = ({ navigate }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 text-white py-12 px-4 overflow-hidden">
-        <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-[#C9A84C]/10 blur-3xl" />
         <div className="max-w-5xl mx-auto relative">
           <button onClick={() => navigate("home")} className="flex items-center gap-2 text-blue-300 hover:text-white mb-6 text-sm font-medium"><ArrowLeft size={16} /> Back to Home</button>
-          <span className="text-[#C9A84C] text-xs font-semibold tracking-widest uppercase">Motor Insurance &middot; Underwritten by NPF Insurance</span>
+          <span className="inline-flex items-center gap-2 text-blue-100 text-sm"><img src="/partners/npf-logo.jpg" alt="" width="28" height="28" className="w-7 h-7 rounded-md bg-white object-contain" />Underwritten by NPF Insurance Company Limited</span>
           <h1 className="text-3xl md:text-4xl font-bold mt-2 mb-3" style={{ fontFamily: "'Playfair Display',serif" }}>{order ? "Almost done" : "Buy Motor Insurance Online"}</h1>
           <p className="text-blue-200 max-w-xl">{order ? `Your reference is ${order.reference}. Follow the three steps below.` : "Compulsory third party cover for your car or motorcycle. Fill in your details, pay by bank transfer, and we send your certificate as soon as we confirm payment."}</p>
           {!order && (
@@ -189,7 +188,7 @@ const BuyPage = ({ navigate }) => {
             <div style={{ display: "none" }} aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} /></div>
 
             <div>
-              <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">1. Choose your cover</p>
+              <p className="text-base font-semibold text-gray-900 mb-3">1. Choose your cover</p>
               <div className="grid grid-cols-2 gap-3">
                 {Object.entries(PRODUCTS).map(([k, p]) => {
                   const Icon = ICONS[k]; const on = form.product === k;
@@ -206,7 +205,7 @@ const BuyPage = ({ navigate }) => {
             </div>
 
             <div>
-              <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">2. Policy holder</p>
+              <p className="text-base font-semibold text-gray-900 mb-3">2. Policy holder</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Full name" error={errors.insured_name} className="sm:col-span-2"><input className={cls("insured_name")} value={form.insured_name} onChange={(e) => set("insured_name", e.target.value)} maxLength={120} placeholder="As it should appear on the certificate" /></Field>
                 <Field label="Phone number (WhatsApp)" error={errors.phone}><input type="tel" className={cls("phone")} value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} placeholder="08012345678" /></Field>
@@ -222,7 +221,7 @@ const BuyPage = ({ navigate }) => {
             </div>
 
             <div>
-              <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">3. {form.product === "motorcycle" ? "Motorcycle" : "Vehicle"} details</p>
+              <p className="text-base font-semibold text-gray-900 mb-3">3. {form.product === "motorcycle" ? "Motorcycle" : "Vehicle"} details</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Plate number" error={errors.reg_no}><input className={cls("reg_no")} value={form.reg_no} onChange={(e) => set("reg_no", e.target.value.toUpperCase())} maxLength={20} placeholder="e.g. ABJ143FH" /></Field>
                 <Field label="Year of make" error={errors.year_of_make}><input inputMode="numeric" className={cls("year_of_make")} value={form.year_of_make} onChange={(e) => set("year_of_make", e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="e.g. 2014" /></Field>

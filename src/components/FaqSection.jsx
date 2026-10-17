@@ -66,7 +66,6 @@ const FaqSection = () => {
     <section id="faq" className="section-padding bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.6fr] gap-10 lg:gap-16">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="lg:sticky lg:top-32 self-start">
-          <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">FAQ</span>
           <h2 className="text-gray-900 text-3xl md:text-4xl font-bold mt-3 mb-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Questions people<br /><span className="text-blue-700">often ask us</span>
           </h2>

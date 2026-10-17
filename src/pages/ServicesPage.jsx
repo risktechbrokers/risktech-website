@@ -212,7 +212,6 @@ const ServicesPage = ({ navigate, onGetQuote }) => {
           >
             <ArrowLeft size={16} /> Back to Home
           </button>
-          <span className="text-blue-300 text-xs font-semibold tracking-widest uppercase">RiskTech Insurance Brokers</span>
           <h1 className="text-3xl md:text-5xl font-bold mt-2 mb-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Our Products & Services
           </h1>

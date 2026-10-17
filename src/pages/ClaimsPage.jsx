@@ -82,7 +82,6 @@ const ClaimsPage = ({ navigate }) => {
               <Shield size={28} className="text-white"/>
             </div>
             <div>
-              <span className="text-blue-300 text-xs font-semibold tracking-widest uppercase">Claims Assistance</span>
               <h1 className="text-3xl md:text-4xl font-bold mt-2 mb-3" style={{fontFamily:"'Playfair Display',serif"}}>Make a Claim</h1>
               <p className="text-blue-200 max-w-xl text-base leading-relaxed">
                 Had an incident? Don't worry, RiskTech is here to help. We handle the entire claims process on your behalf, dealing directly with the insurer to get you what you deserve.
@@ -95,7 +94,7 @@ const ClaimsPage = ({ navigate }) => {
       {/* How it works */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-4 py-10">
-          <p className="text-center text-gray-500 text-sm font-semibold uppercase tracking-widest mb-8">How the Claims Process Works</p>
+          <h2 className="text-center text-gray-900 text-xl font-bold mb-8">How the claims process works</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {STEPS.map((s, i) => {
               const Icon = s.icon;
@@ -124,7 +123,7 @@ const ClaimsPage = ({ navigate }) => {
                 <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:"spring",stiffness:200}}>
                   <CheckCircle size={64} className="text-green-500 mx-auto mb-4"/>
                 </motion.div>
-                <h3 className="text-gray-900 text-2xl font-bold mb-2">Claim Submitted! 🎉</h3>
+                <h3 className="text-gray-900 text-2xl font-bold mb-2">Claim submitted</h3>
                 <p className="text-gray-500 max-w-sm mx-auto mb-6">Your claim has been received. A RiskTech claims specialist will contact you within 24 hours to guide you through the next steps.</p>
                 <div className="bg-blue-50 rounded-2xl p-5 text-left mb-6">
                   <p className="font-bold text-blue-900 text-sm mb-2">What happens next?</p>
@@ -158,7 +157,7 @@ const ClaimsPage = ({ navigate }) => {
 
                 {/* Section: Personal */}
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2"><Users size={12}/>Your Details</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2"><Users size={12}/>Your Details</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-700 text-sm font-medium mb-1.5">Full Name <span className="text-red-500">*</span></label>
@@ -177,7 +176,7 @@ const ClaimsPage = ({ navigate }) => {
 
                 {/* Section: Policy */}
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2"><Shield size={12}/>Policy Information</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2"><Shield size={12}/>Policy Information</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-700 text-sm font-medium mb-1.5">Policy Number <span className="text-gray-400 font-normal">(if known)</span></label>
@@ -195,7 +194,7 @@ const ClaimsPage = ({ navigate }) => {
 
                 {/* Section: Incident */}
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2"><Zap size={12}/>Incident Details</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2"><Zap size={12}/>Incident Details</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-gray-700 text-sm font-medium mb-1.5">Date of Incident <span className="text-red-500">*</span></label>
@@ -220,7 +219,7 @@ const ClaimsPage = ({ navigate }) => {
                   className="w-full bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white font-bold py-4 rounded-xl transition-all hover:shadow-lg flex items-center justify-center gap-2 text-base">
                   {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Submitting...</> : <>Submit My Claim <ChevronRight size={18}/></>}
                 </button>
-                <p className="text-gray-400 text-xs text-center mt-3">🔒 Your claim is submitted securely and handled with full confidentiality</p>
+                <p className="text-gray-400 text-xs text-center mt-3">Your claim is submitted securely and handled with full confidentiality</p>
               </form>
             )}
           </div>
@@ -258,7 +257,7 @@ const ClaimsPage = ({ navigate }) => {
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <p className="font-bold text-amber-900 text-sm mb-2">⚠️ Important</p>
+              <p className="font-bold text-amber-900 text-sm mb-2">Important</p>
               <p className="text-amber-800 text-xs leading-relaxed">
                 Please notify us of any claim as soon as possible after the incident. Late notification may affect your claim outcome. Do not dispose of damaged items before our assessment.
               </p>

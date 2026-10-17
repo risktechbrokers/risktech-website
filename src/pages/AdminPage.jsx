@@ -170,9 +170,9 @@ const AdminPage = ({ navigate }) => {
     <div className="min-h-screen bg-gray-100">
       <div className="bg-[#0B1F4B] text-white px-4 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          <h1 className="font-bold text-lg">Issue motor certificate</h1>
+          <h1 className="font-bold text-base sm:text-lg whitespace-nowrap">Issue certificate</h1>
           <div className="flex items-center gap-2">
-            <button onClick={newSale} className="text-xs bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg">New walk-in sale</button>
+            <button onClick={newSale} className="text-xs bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg whitespace-nowrap">New sale</button>
             <button onClick={signOut} className="p-2 bg-white/15 hover:bg-white/25 rounded-lg" aria-label="Sign out"><LogOut size={16} /></button>
           </div>
         </div>

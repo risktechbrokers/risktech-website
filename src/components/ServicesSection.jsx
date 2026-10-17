@@ -22,11 +22,9 @@ const ServicesSection = ({ navigate }) => (
         transition={{ duration: 0.6 }}
         className="text-center mb-12"
       >
-        <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">What We Offer</span>
         <h2 className="text-gray-900 text-3xl md:text-4xl font-bold mt-3 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
           Over 30 Insurance Products
         </h2>
-        <div className="w-16 h-1 bg-blue-700 mx-auto rounded-full mb-5" />
         <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed text-base">
           As NAICOM-licensed brokers, we connect you to the best coverage across all insurance classes, negotiating the most suitable policy at the most competitive rate.
         </p>
@@ -66,9 +64,9 @@ const ServicesSection = ({ navigate }) => (
       >
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(circle at 30% 50%, #60A5FA 0%, transparent 60%), radial-gradient(circle at 70% 50%, #93C5FD 0%, transparent 60%)" }} />
         <div className="relative z-10">
-          <p className="text-blue-300 text-sm font-semibold tracking-widest uppercase mb-3">30+ Products Available</p>
+          
           <h3 className="text-white text-2xl md:text-3xl font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Explore Our Complete Products & Services Catalogue
+            See every product we offer
           </h3>
           <p className="text-blue-200 max-w-xl mx-auto mb-8 leading-relaxed">
             From motor to marine, health to Takaful, engineering to agric: view all our insurance products with full details, benefits and coverage information.

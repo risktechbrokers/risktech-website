@@ -22,16 +22,12 @@ const TrustSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">
-            Credentials & Licensing
-          </span>
           <h2
             className="text-gray-900 text-3xl md:text-4xl font-bold mt-3 mb-4"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             Fully Licensed & Regulated
           </h2>
-          <div className="w-16 h-1 bg-blue-700 mx-auto rounded-full mb-5" />
           <p className="text-gray-500 max-w-xl mx-auto text-base leading-relaxed">
             We operate under the full authority and oversight of Nigeria's insurance
             regulatory body, so you can transact with complete confidence.

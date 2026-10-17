@@ -36,8 +36,7 @@ const WhatsAppButton = () => {
       </AnimatePresence>
       <a href={waLink(GREETING)} target="_blank" rel="noreferrer" aria-label="Chat with RiskTech on WhatsApp"
         className="group relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-[0_10px_30px_-6px_rgba(37,211,102,0.6)] hover:scale-105 active:scale-95 transition-transform">
-        <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-25" />
-        <WhatsAppIcon size={30} className="relative" />
+                <WhatsAppIcon size={30} className="relative" />
       </a>
     </div>
   );

@@ -160,11 +160,9 @@ const ContactSection = ({ preselectedService = "" }) => {
 
         {/* Header */}
         <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.6}} className="text-center mb-12">
-          <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">Get In Touch</span>
           <h2 className="text-gray-900 text-3xl md:text-4xl font-bold mt-3 mb-4" style={{fontFamily:"'Playfair Display',serif"}}>
             {preselectedService ? `Get a Quote for ${preselectedService}` : "Request a Quote or Contact Us"}
           </h2>
-          <div className="w-16 h-1 bg-blue-700 mx-auto rounded-full mb-5"/>
           <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
             {preselectedService
               ? `You've selected ${preselectedService}. Fill in your details below and we'll get back to you with the best quote.`
@@ -182,7 +180,7 @@ const ContactSection = ({ preselectedService = "" }) => {
                 <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:"spring",stiffness:200}}>
                   <CheckCircle size={64} className="text-green-500 mb-4"/>
                 </motion.div>
-                <h3 className="text-gray-900 text-2xl font-bold mb-2">Message Sent! 🎉</h3>
+                <h3 className="text-gray-900 text-2xl font-bold mb-2">Message sent</h3>
                 <p className="text-gray-500 max-w-sm">Thank you for reaching out. A RiskTech broker will contact you as soon as possible.</p>
                 <button onClick={resetForm} className="mt-6 text-blue-600 font-semibold text-sm hover:underline">Send another message</button>
               </div>
@@ -206,7 +204,7 @@ const ContactSection = ({ preselectedService = "" }) => {
 
                 {/* ── SECTION 1: Personal Details ── */}
                 <div className="mb-5">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">Your Details</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3">Your Details</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-700 text-sm font-medium mb-1.5">Full Name <span className="text-red-500">*</span></label>
@@ -229,7 +227,7 @@ const ContactSection = ({ preselectedService = "" }) => {
 
                 {/* ── SECTION 2: Insurance Type ── */}
                 <div className="mb-5">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">Insurance Details</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3">Insurance Details</p>
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-1.5">Type of Insurance <span className="text-red-500">*</span></label>
                     <div className="relative">
@@ -245,7 +243,7 @@ const ContactSection = ({ preselectedService = "" }) => {
                   {dynamicFields.length > 0 && (
                     <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{duration:0.3}}
                       className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
-                      <p className="text-blue-700 text-xs font-bold uppercase tracking-widest mb-3">
+                      <p className="text-base font-semibold text-gray-900 mb-3">
                         {formData.insurance_type} Additional Details
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -274,7 +272,7 @@ const ContactSection = ({ preselectedService = "" }) => {
 
                 {/* ── SECTION 3: Message + Preferences ── */}
                 <div className="mb-5">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3">More Information</p>
+                  <p className="text-base font-semibold text-gray-900 mb-3">More Information</p>
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-1.5">Message / Additional Details <span className="text-red-500">*</span></label>
                     <textarea name="message" value={formData.message} onChange={e=>setFormData(p=>({...p,message:sanitize(e.target.value)}))} required rows={4} maxLength={2000}
@@ -316,7 +314,7 @@ const ContactSection = ({ preselectedService = "" }) => {
                   className="w-full bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white font-semibold py-4 rounded-xl transition-all hover:shadow-lg flex items-center justify-center gap-2 text-base">
                   {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Sending...</> : <>Send Message <Send size={18}/></>}
                 </button>
-                <p className="text-gray-400 text-xs text-center mt-3">🔒 Sent securely to risktechbrokers@gmail.com</p>
+                <p className="text-gray-400 text-xs text-center mt-3">Sent securely to risktechbrokers@gmail.com</p>
               </form>
             )}
           </motion.div>
@@ -346,10 +344,10 @@ const ContactSection = ({ preselectedService = "" }) => {
               );
             })}
             <div className="bg-blue-700 rounded-2xl p-5 text-white">
-              <div className="flex items-center gap-2 mb-3"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"/><p className="font-bold text-base">Always Available</p></div>
+              <div className="flex items-center gap-2 mb-3"><div className="w-2 h-2 bg-green-400 rounded-full"/><p className="font-bold text-base">Always Available</p></div>
               <div className="bg-white/15 rounded-xl px-4 py-3 text-center mb-3">
                 <p className="text-3xl font-black text-white tracking-wider">24 / 7</p>
-                <p className="text-blue-200 text-xs mt-1 uppercase tracking-widest">Round the Clock</p>
+                <p className="text-blue-200 text-xs mt-1">Round the clock</p>
               </div>
               <div className="space-y-1.5 text-blue-100 text-sm">
                 <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"/><span>Monday – Sunday: Always Open</span></div>
@@ -371,7 +369,6 @@ const ContactSection = ({ preselectedService = "" }) => {
         <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.6}} className="mt-12">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
             <div>
-              <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">Visit Us</span>
               <h3 className="text-gray-900 text-2xl font-bold mt-1" style={{fontFamily:"'Playfair Display',serif"}}>Our Office in Yaba, Lagos</h3>
               <p className="text-gray-500 text-sm mt-1">Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos.</p>
             </div>

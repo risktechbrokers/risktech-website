@@ -36,15 +36,13 @@ const AboutSection = () => {
             transition={{ duration: 0.7 }}
             className="flex-1"
           >
-            <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">About Us</span>
             <h2
               className="text-gray-900 text-3xl md:text-4xl font-bold mt-3 mb-4 leading-tight"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              Your Trusted Insurance
-              <br /><span className="text-blue-700">Partner Wherever You Are</span>
+              Brokers who work
+              <br /><span className="text-blue-700">for you, not the insurer</span>
             </h2>
-            <div className="w-16 h-1 bg-blue-700 rounded-full mb-6" />
 
             <div className="space-y-4 text-gray-600 leading-relaxed">
               <p>
@@ -102,10 +100,8 @@ const AboutSection = () => {
             className="flex-1 w-full"
           >
             <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-3xl p-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10"
-                style={{ background: "radial-gradient(circle, #93C5FD, transparent 70%)", transform: "translate(30%, -30%)" }} />
 
-              <p className="text-blue-100 text-sm font-medium uppercase tracking-widest mb-2">
+              <p className="text-white text-lg font-semibold mb-2">
                 Company at a Glance
               </p>
               <p className="text-white text-xs text-blue-200 mb-6 leading-relaxed">
@@ -195,11 +191,9 @@ const AboutSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-10"
         >
-          <span className="text-blue-600 text-sm font-semibold tracking-widest uppercase">Our People</span>
           <h3 className="text-gray-900 text-2xl md:text-3xl font-bold mt-2 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
             Leadership Team
           </h3>
-          <div className="w-12 h-1 bg-blue-700 mx-auto rounded-full" />
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

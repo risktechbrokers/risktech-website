@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, Film } from "lucide-react";
+import { Play } from "lucide-react";
 
 const AdSection = () => {
   const [loadFilm, setLoadFilm]     = useState(false);
@@ -54,18 +54,14 @@ const AdSection = () => {
         transition={{ duration: 0.55, ease: "easeOut" }}
         className="text-center pt-16 pb-10 px-6"
       >
-        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4">
-          <Film size={12} /> Our Story
-        </div>
         <h2
           className="text-white text-3xl md:text-4xl font-bold mb-4"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
-          See Why We&apos;re Different
+          Meet RiskTech
         </h2>
-        <div className="w-14 h-1 bg-gradient-to-r from-blue-500 to-blue-300 mx-auto rounded-full mb-5" />
         <p className="text-gray-400 max-w-lg mx-auto text-base leading-relaxed">
-          Watch our story and see what RiskTech stands for, in every frame.
+          A short film about who we are and how we work.
         </p>
       </motion.div>
 

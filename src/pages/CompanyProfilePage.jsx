@@ -45,7 +45,6 @@ const CompanyProfilePage = ({ navigate }) => (
 
         <div className="flex flex-col lg:flex-row items-start gap-12">
           <div className="flex-1">
-            <span className="text-blue-300 text-xs font-semibold tracking-widest uppercase">NAICOM Licence No. 1271</span>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mt-3 mb-6 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
               RiskTech Insurance<br /><span className="text-blue-300">Brokers Limited</span>
             </h1>
@@ -53,9 +52,9 @@ const CompanyProfilePage = ({ navigate }) => (
               A professionally registered insurance brokerage firm incorporated in July 2024, headquartered in Lagos, Nigeria, serving clients locally and internationally. We connect individuals and businesses with the right insurance solutions across all classes.
             </p>
             <div className="flex flex-wrap gap-3">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">🏛️ CAC Registered</div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">🏆 NAICOM Licensed</div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">⚡ Est. 2024</div>
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">CAC Registered</div>
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">NAICOM Licensed</div>
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-sm font-semibold">Established 2024</div>
             </div>
           </div>
 
@@ -83,7 +82,6 @@ const CompanyProfilePage = ({ navigate }) => (
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <span className="text-blue-600 text-xs font-semibold tracking-widest uppercase">About Us</span>
           <h2 className="text-3xl font-bold text-gray-900 mt-2 mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
             Who We Are
           </h2>
@@ -153,9 +151,7 @@ const CompanyProfilePage = ({ navigate }) => (
       {/* ── OBJECTIVES ── */}
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="mb-20">
         <div className="text-center mb-10">
-          <span className="text-blue-600 text-xs font-semibold tracking-widest uppercase">What We Stand For</span>
           <h2 className="text-3xl font-bold text-gray-900 mt-2" style={{ fontFamily: "'Playfair Display', serif" }}>Our Objectives</h2>
-          <div className="w-12 h-1 bg-blue-700 mx-auto mt-3 rounded-full" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {OBJECTIVES.map((obj, i) => (
@@ -170,9 +166,7 @@ const CompanyProfilePage = ({ navigate }) => (
       {/* ── LEADERSHIP TEAM ── */}
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="mb-20">
         <div className="text-center mb-10">
-          <span className="text-blue-600 text-xs font-semibold tracking-widest uppercase">Our People</span>
           <h2 className="text-3xl font-bold text-gray-900 mt-2" style={{ fontFamily: "'Playfair Display', serif" }}>Leadership Team</h2>
-          <div className="w-12 h-1 bg-blue-700 mx-auto mt-3 rounded-full" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {LEADERSHIP.map((member, i) => (

@@ -1,54 +1,82 @@
-// Promo band for buying third party motor insurance online.
+// NPF Insurance partner section: the place on the site to buy NPF motor cover online.
 import { motion } from "framer-motion";
-import { ArrowRight, Car, Bike, FileCheck2, Landmark, ClipboardList } from "lucide-react";
+import { ArrowRight, Car, Bike, ClipboardList, Landmark, FileCheck2 } from "lucide-react";
+
+const NPF = { blue: "#173C8C", yellow: "#F2E400", green: "#0B6B2E" };
 
 const STEPS = [
-  { icon: ClipboardList, title: "Fill the form", text: "Your name and your vehicle's papers: plate, chassis and engine numbers." },
+  { icon: ClipboardList, title: "Fill the form", text: "Your name, plate number, chassis and engine numbers." },
   { icon: Landmark, title: "Pay by transfer", text: "Send the premium to our Jaiz Bank account with your reference." },
-  { icon: FileCheck2, title: "Get your certificate", text: "Once payment is confirmed we send your NPF certificate to your WhatsApp." },
+  { icon: FileCheck2, title: "Receive your certificate", text: "Once payment is confirmed, your NPF certificate comes to your WhatsApp." },
 ];
 
 const MotorPromo = ({ navigate }) => (
-  <section className="section-padding bg-white">
-    <div className="max-w-7xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
-        className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0B1F4B] via-[#13306e] to-[#1d4ed8] text-white p-7 sm:p-10 lg:p-14">
-        <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#C9A84C]/15 blur-3xl" />
-        <div className="absolute -left-24 bottom-0 w-80 h-80 rounded-full bg-blue-400/10 blur-3xl" />
-        <div className="relative grid lg:grid-cols-[1fr_1.2fr] gap-10 items-center">
-          <div>
-            <span className="text-[#E6C878] text-xs font-semibold tracking-[0.2em] uppercase">New: buy online</span>
-            <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Third party motor insurance, without the queue
-            </h2>
-            <p className="text-blue-100/90 leading-relaxed mb-6">Compulsory cover for your car or motorcycle, underwritten by NPF Insurance Company Limited and handled by licensed brokers.</p>
-            <div className="flex flex-wrap gap-3 mb-7">
-              <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-4 py-2.5"><Car size={18} className="text-[#E6C878]" /><span className="text-sm">Private Motor <b>₦15,000</b></span></div>
-              <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-4 py-2.5"><Bike size={18} className="text-[#E6C878]" /><span className="text-sm">Motorcycle <b>₦3,000</b></span></div>
+  <section id="npf" className="px-4 sm:px-6 lg:px-12 py-16 sm:py-20 bg-gray-50">
+    <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
+      className="max-w-6xl mx-auto bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+
+      {/* NPF colour strip */}
+      <div className="flex h-1.5">
+        <span className="flex-1" style={{ background: NPF.blue }} />
+        <span className="flex-1" style={{ background: NPF.yellow }} />
+        <span className="flex-1" style={{ background: NPF.green }} />
+      </div>
+
+      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 p-6 sm:p-10 lg:p-12">
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <img src="/partners/npf-logo.jpg" alt="NPF Insurance Company Limited" width="56" height="56" className="w-14 h-14 rounded-xl border border-gray-100 object-contain bg-white" loading="lazy" />
+            <div className="leading-tight">
+              <p className="text-xs text-gray-500">In partnership with</p>
+              <p className="font-semibold text-gray-900">NPF Insurance Company Limited</p>
             </div>
-            <button onClick={() => navigate("buy")} className="group inline-flex items-center gap-2 bg-[#C9A84C] hover:bg-[#d8b95f] text-[#0B1F4B] font-bold px-7 py-4 rounded-2xl transition-all hover:-translate-y-0.5">
-              Buy now <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {STEPS.map((s, i) => {
+
+          <h2 className="text-gray-900 text-3xl md:text-4xl font-bold leading-tight mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Buy NPF third party motor insurance online
+          </h2>
+          <p className="text-gray-600 leading-relaxed mb-6">
+            The compulsory cover every vehicle in Nigeria needs, underwritten by NPF Insurance and arranged by RiskTech as your licensed broker.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 mb-7 max-w-md">
+            {[["Private Motor", "₦15,000", Car], ["Motorcycle", "₦3,000", Bike]].map(([t, p, Icon]) => (
+              <div key={t} className="rounded-2xl border border-gray-200 p-4">
+                <Icon size={20} style={{ color: NPF.green }} />
+                <p className="text-gray-600 text-sm mt-2">{t}</p>
+                <p className="text-gray-900 text-lg sm:text-xl font-bold whitespace-nowrap">{p}<span className="text-gray-400 text-xs font-normal"> / year</span></p>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => navigate("buy")}
+            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 text-white font-semibold px-7 py-3.5 rounded-xl transition-all hover:brightness-110"
+            style={{ background: NPF.green }}>
+            Buy NPF motor cover <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+
+        <div className="lg:border-l lg:border-gray-100 lg:pl-10 flex flex-col justify-center">
+          <p className="font-semibold text-gray-900 mb-5">How it works</p>
+          <ol className="space-y-6">
+            {STEPS.map((s) => {
               const Icon = s.icon;
               return (
-                <motion.div key={s.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.15 + i * 0.12 }}
-                  className="rounded-2xl bg-white/[0.07] border border-white/10 p-5 backdrop-blur-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center"><Icon size={20} className="text-[#E6C878]" /></div>
-                    <span className="text-white/25 text-3xl font-bold">0{i + 1}</span>
-                  </div>
-                  <p className="font-bold mb-1">{s.title}</p>
-                  <p className="text-blue-100/80 text-sm leading-relaxed">{s.text}</p>
-                </motion.div>
+                <li key={s.title} className="flex gap-4">
+                  <span className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
+                    <Icon size={20} style={{ color: NPF.blue }} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-gray-900">{s.title}</span>
+                    <span className="block text-gray-600 text-sm leading-relaxed mt-0.5">{s.text}</span>
+                  </span>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   </section>
 );
 
