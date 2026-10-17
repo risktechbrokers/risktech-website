@@ -1,106 +1,193 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, ShieldCheck, BadgeCheck, Clock, Car, Bike, HeartPulse, Home, Ship, Briefcase, Wheat } from "lucide-react";
 import { HERO_SLIDES } from "../data/services";
 
-const preloadImages = () => {
-  HERO_SLIDES.forEach((slide, i) => {
-    if (i === 0) return;
-    const img = new Image();
-    img.src = slide.image;
-  });
+const ICONS = {
+  "Motor insurance": Car,
+  "Health insurance": HeartPulse,
+  "Property insurance": Home,
+  "Marine insurance": Ship,
+  "Business insurance": Briefcase,
+  "Agricultural insurance": Wheat,
 };
 
+const SLIDE_MS = 7000;
+const FADE_S = 1.4;
 const ease = [0.22, 1, 0.36, 1];
+
+// Resolve once the photo is downloaded and decoded (or after a short wait), so a slide never shows a blank background.
+const loadImage = (src) =>
+  new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = src;
+    if (img.decode) img.decode().then(finish).catch(() => {});
+    setTimeout(finish, 4000);
+  });
 
 const HeroSection = ({ navigate }) => {
   const [current, setCurrent] = useState(0);
+  const [prev, setPrev] = useState(null);
   const [paused, setPaused] = useState(false);
+  const busy = useRef(false);
+  const currentRef = useRef(0);
 
-  useEffect(() => {
-    const t = setTimeout(preloadImages, 2000);
-    return () => clearTimeout(t);
+  const goTo = useCallback(async (target) => {
+    if (busy.current) return;
+    busy.current = true;
+    const n = (target + HERO_SLIDES.length) % HERO_SLIDES.length;
+    await loadImage(HERO_SLIDES[n].image);
+    if (n !== currentRef.current) {
+      setPrev(currentRef.current);
+      currentRef.current = n;
+      setCurrent(n);
+    }
+    busy.current = false;
   }, []);
 
-  const next = useCallback(() => setCurrent((c) => (c + 1) % HERO_SLIDES.length), []);
-  const prev = useCallback(() => setCurrent((c) => (c - 1 + HERO_SLIDES.length) % HERO_SLIDES.length), []);
+  const next = useCallback(() => goTo(current + 1), [current, goTo]);
+  const back = useCallback(() => goTo(current - 1), [current, goTo]);
 
+  // Auto-advance. Pausing only happens for a real mouse hovering on a computer,
+  // never for a finger on a phone (touching used to freeze the slideshow).
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(next, 6500);
-    return () => clearInterval(t);
+    const t = setTimeout(next, SLIDE_MS);
+    return () => clearTimeout(t);
   }, [next, paused, current]);
+
+  // Warm up the next photo in the background
+  useEffect(() => {
+    const t = setTimeout(() => loadImage(HERO_SLIDES[(current + 1) % HERO_SLIDES.length].image), 1500);
+    return () => clearTimeout(t);
+  }, [current]);
 
   const slide = HERO_SLIDES[current];
   const [line1, line2] = slide.headline.split("\n");
+  const Icon = ICONS[slide.label] || ShieldCheck;
+
+  const scrollToContact = () => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <section id="home" className="relative h-[100svh] min-h-[600px] max-h-[980px] overflow-hidden bg-[#0B1F4B]"
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <section
+      id="home"
+      className="relative h-[100svh] min-h-[640px] max-h-[1000px] overflow-hidden bg-[#0B1F4B]"
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") setPaused(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") setPaused(false); }}
+    >
+      {/* Photos: the new one fades in on top while the previous stays fully visible underneath (no dark flash) */}
+      {HERO_SLIDES.map((s, i) => {
+        const isCurrent = i === current;
+        const isPrev = i === prev;
+        return (
+          <motion.img
+            key={s.image}
+            src={s.image}
+            alt={isCurrent ? s.label : ""}
+            aria-hidden={!isCurrent}
+            draggable={false}
+            initial={{ opacity: i === 0 ? 1 : 0, scale: 1 }}
+            animate={isCurrent ? { opacity: 1, scale: 1.07 } : isPrev ? { opacity: 1 } : { opacity: 0, scale: 1 }}
+            transition={isCurrent
+              ? { opacity: { duration: FADE_S, ease: "easeInOut" }, scale: { duration: (SLIDE_MS / 1000) + FADE_S + 1, ease: "linear" } }
+              : { duration: 0 }}
+            className="absolute inset-0 w-full h-full object-cover select-none"
+            style={{ zIndex: isCurrent ? 3 : isPrev ? 2 : 1 }}
+            loading={i === 0 ? "eager" : "lazy"}
+            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+          />
+        );
+      })}
 
-      {/* Background photo */}
-      <AnimatePresence initial={false}>
-        <motion.img
-          key={slide.image}
-          src={slide.image}
-          alt={slide.label}
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ opacity: { duration: 1 }, scale: { duration: 7, ease: "linear" } }}
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="eager"
-          onError={(e) => { e.currentTarget.style.display = "none"; }}
-        />
-      </AnimatePresence>
-
-      {/* Readability shading: light at the top so the photo shows, darker where the text sits */}
-      <div className="absolute inset-0 lg:hidden" style={{ background: "linear-gradient(180deg, rgba(8,18,40,0.55) 0%, rgba(8,18,40,0.15) 30%, rgba(8,18,40,0.55) 58%, rgba(8,18,40,0.92) 100%)" }} />
-      <div className="absolute inset-0 hidden lg:block" style={{ background: "linear-gradient(90deg, rgba(8,18,40,0.88) 0%, rgba(8,18,40,0.6) 45%, rgba(8,18,40,0.1) 100%)" }} />
+      {/* Shading so the text is readable while the photo stays visible */}
+      <div className="absolute inset-0 z-[4] lg:hidden" style={{ background: "linear-gradient(180deg, rgba(8,18,40,0.55) 0%, rgba(8,18,40,0.35) 35%, rgba(8,18,40,0.6) 70%, rgba(8,18,40,0.88) 100%)" }} />
+      <div className="absolute inset-0 z-[4] hidden lg:block" style={{ background: "linear-gradient(90deg, rgba(8,18,40,0.86) 0%, rgba(8,18,40,0.55) 50%, rgba(8,18,40,0.2) 100%)" }} />
 
       {/* Content */}
-      <div className="relative z-10 h-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 flex flex-col justify-end lg:justify-center pb-24 lg:pb-0 pt-28">
-        <div className="max-w-xl text-center lg:text-left mx-auto lg:mx-0">
-          <AnimatePresence mode="wait">
-            <motion.div key={current} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.55, ease }}>
-              <h1 className="text-white font-bold leading-[1.1] mb-4" style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.05rem, 5vw, 3.9rem)" }}>
-                <span className="block">{line1}</span>
-                <span className="block text-[#9CC3FF]">{line2}</span>
-              </h1>
-              <p className="text-blue-50/90 text-base sm:text-lg leading-relaxed mb-7 max-w-md mx-auto lg:mx-0">{slide.sub}</p>
-            </motion.div>
-          </AnimatePresence>
+      <div className="relative z-10 h-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 flex items-center pt-20 pb-16">
+        <div className="w-full grid lg:grid-cols-[1.35fr_0.85fr] gap-10 items-center">
 
-          <div className="flex flex-col sm:flex-row items-center lg:items-center justify-center lg:justify-start gap-3 sm:gap-6">
-            <button onClick={() => navigate("buy")}
-              className="group w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center gap-2">
-              Buy Motor Insurance <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-white/90 hover:text-white font-medium underline decoration-white/40 underline-offset-4 hover:decoration-white py-2">
-              Get a free quote for any insurance
-            </button>
+          <div className="text-center lg:text-left">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={current}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease, delay: 0.35 } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.35 } }}
+              >
+                <p className="inline-flex items-center gap-2 text-blue-100/90 text-sm font-medium mb-4">
+                  <Icon size={17} className="text-blue-300" />
+                  {slide.label.charAt(0).toUpperCase() + slide.label.slice(1)}
+                </p>
+                <h1 className="text-white font-bold leading-[1.08] mb-4" style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.15rem, 5.2vw, 4rem)", textShadow: "0 2px 24px rgba(0,0,0,0.35)" }}>
+                  <span className="block">{line1}</span>
+                  <span className="block text-[#A9CBFF]">{line2}</span>
+                </h1>
+                <p className="text-blue-50/90 text-base sm:text-lg leading-relaxed max-w-md mx-auto lg:mx-0">{slide.sub}</p>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Two buttons, side by side on phones too */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mt-7 max-w-md sm:max-w-none mx-auto lg:mx-0 justify-center lg:justify-start">
+              <button onClick={() => navigate("buy")}
+                className="group whitespace-nowrap bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl shadow-lg shadow-blue-950/40 transition-colors flex items-center justify-center gap-2">
+                Buy Motor Insurance <ArrowRight size={18} className="hidden sm:block group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button onClick={scrollToContact}
+                className="whitespace-nowrap bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/60 text-white font-semibold text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl transition-colors">
+                Get a Quote
+              </button>
+            </div>
+
+            {/* Trust row */}
+            <div className="mt-7 flex flex-wrap justify-center lg:justify-start gap-x-5 gap-y-2 text-[13px] sm:text-sm text-blue-50/90">
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck size={16} className="text-blue-300" /> NAICOM Licensed &middot; 1271</span>
+              <span className="inline-flex items-center gap-1.5"><BadgeCheck size={16} className="text-blue-300" /> CAC Registered</span>
+              <span className="inline-flex items-center gap-1.5"><Clock size={16} className="text-blue-300" /> Open 24/7</span>
+            </div>
           </div>
 
-          <p className="mt-7 flex items-center justify-center lg:justify-start gap-2 text-sm text-blue-100/80">
-            <ShieldCheck size={16} className="text-blue-300" />
-            NAICOM Licence No. 1271 &middot; Open 24/7
-          </p>
+          {/* Quick-buy card (computers only) */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5, ease }}
+            className="hidden lg:block justify-self-end w-full max-w-sm">
+            <div className="rounded-2xl bg-white/[0.09] border border-white/15 backdrop-blur-md p-6 shadow-2xl shadow-black/30">
+              <p className="text-white font-semibold text-lg">Buy third party motor cover</p>
+              <p className="text-blue-100/80 text-sm mt-1 mb-5">Online in a few minutes. Pay by bank transfer.</p>
+              {[["Private Motor", "₦15,000", Car], ["Motorcycle", "₦3,000", Bike]].map(([t, p, I]) => (
+                <button key={t} onClick={() => navigate("buy")}
+                  className="w-full flex items-center justify-between rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 px-4 py-3 mb-2.5 transition-colors text-left">
+                  <span className="flex items-center gap-3 text-white"><I size={18} className="text-blue-200" />{t}</span>
+                  <span className="text-white font-semibold">{p}<span className="text-blue-200/70 text-xs font-normal"> /yr</span></span>
+                </button>
+              ))}
+              <button onClick={() => navigate("buy")} className="w-full mt-2 bg-white text-[#0B1F4B] hover:bg-blue-50 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                Buy now <ArrowRight size={16} />
+              </button>
+              <p className="flex items-center justify-center gap-2 text-blue-100/70 text-xs mt-4">
+                <img src="/partners/npf-logo.jpg" alt="" width="20" height="20" className="w-5 h-5 rounded bg-white object-contain" />
+                Underwritten by NPF Insurance
+              </p>
+            </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Slide controls */}
-      <div className="absolute bottom-7 left-0 right-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 flex items-center justify-center lg:justify-between">
+      <div className="absolute bottom-6 left-0 right-0 z-20">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 flex items-center justify-center lg:justify-between">
           <div className="flex items-center gap-1.5">
             {HERO_SLIDES.map((s, i) => (
-              <button key={s.label} aria-label={`Show ${s.label}`} onClick={() => setCurrent(i)} className="p-1.5">
-                <span className={`block h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"}`} />
+              <button key={s.label} aria-label={`Show ${s.label}`} onClick={() => goTo(i)} className="p-1.5">
+                <span className={`block h-1.5 rounded-full transition-all duration-500 ${i === current ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"}`} />
               </button>
             ))}
           </div>
           <div className="hidden lg:flex items-center gap-2 mr-24">
-            <button onClick={prev} aria-label="Previous slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronLeft size={18} /></button>
+            <button onClick={back} aria-label="Previous slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronLeft size={18} /></button>
             <button onClick={next} aria-label="Next slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronRight size={18} /></button>
           </div>
         </div>

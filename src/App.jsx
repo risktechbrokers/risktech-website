@@ -36,18 +36,10 @@ const PageLoader = () => (
   </div>
 );
 
-// Show intro overlay only once per browser session
-const hasSeenIntro = () => {
-  try { return !!sessionStorage.getItem("rt_intro_seen"); } catch { return false; }
-};
-const markIntroSeen = () => {
-  try { sessionStorage.setItem("rt_intro_seen", "1"); } catch {}
-};
-
 function App() {
   const [currentPage, setCurrentPage]         = useState(pageFromPath);
   const [selectedService, setSelectedService] = useState("");
-  const [showOverlay, setShowOverlay]         = useState(() => !hasSeenIntro() && pageFromPath() === "home");
+  const [showOverlay, setShowOverlay]         = useState(() => pageFromPath() !== "admin"); // intro plays every time the site is opened
 
   useEffect(() => {
     const onPop = () => setCurrentPage(pageFromPath());
@@ -74,7 +66,6 @@ function App() {
   }, []);
 
   const handleOverlayComplete = useCallback(() => {
-    markIntroSeen();
     setShowOverlay(false);
   }, []);
 
