@@ -12,7 +12,7 @@ const sanitize = (str) =>
   String(str).replace(/<[^>]*>/g,"").replace(/[<>"'`]/g,"").replace(/javascript:/gi,"").replace(/on\w+\s*=/gi,"").trim().slice(0,2000);
 
 const INSURANCE_TYPES = [
-  "General Enquiry","Private Motor Insurance","Commercial Vehicle Insurance",
+  "General Enquiry","Business Insurance","Private Motor Insurance","Commercial Vehicle Insurance",
   "Motorcycle Insurance","Health Insurance","Group Life Assurance",
   "Homeowner Insurance","Fire & Special Perils","Burglary Insurance",
   "Employers' Liability","Occupiers' Liability","Builders' Liability",
@@ -142,7 +142,7 @@ const ContactSection = ({ preselectedService = "" }) => {
       const msgHTML = "<table style=\"width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px\"><thead><tr style=\"background:#0B1F4B\"><td colspan=\"2\" style=\"padding:10px 14px;color:#C9A84C;font-weight:bold\">ENQUIRY DETAILS</td></tr></thead><tbody><tr style=\"background:#f0f4ff\"><td style=\"padding:9px 12px;font-weight:bold;color:#0B1F4B;width:35%\">Insurance Type</td><td style=\"padding:9px 12px\">" + esc(formData.insurance_type||"Not specified") + "</td></tr><tr><td style=\"padding:9px 12px;font-weight:bold;color:#0B1F4B\">Country</td><td style=\"padding:9px 12px\">" + esc(formData.country||"Not specified") + "</td></tr><tr style=\"background:#f0f4ff\"><td style=\"padding:9px 12px;font-weight:bold;color:#0B1F4B\">Preferred Contact</td><td style=\"padding:9px 12px\">" + esc(formData.contact_pref||"Not specified") + "</td></tr><tr><td style=\"padding:9px 12px;font-weight:bold;color:#0B1F4B\">How They Heard</td><td style=\"padding:9px 12px\">" + esc(formData.heard_from||"Not specified") + "</td></tr></tbody>" + (dynamicFields.length>0?"<thead><tr style=\"background:#0B1F4B\"><td colspan=\"2\" style=\"padding:10px 14px;color:#C9A84C;font-weight:bold\">ADDITIONAL DETAILS</td></tr></thead><tbody><tr><td colspan=\"2\" style=\"padding:12px;white-space:pre-line\">" + dynRows + "</td></tr></tbody>":"") + "<thead><tr style=\"background:#0B1F4B\"><td colspan=\"2\" style=\"padding:10px 14px;color:#C9A84C;font-weight:bold\">MESSAGE</td></tr></thead><tbody><tr><td colspan=\"2\" style=\"padding:12px\">" + esc(formData.message||"No message") + "</td></tr></tbody></table>";
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { from_name: formData.name, from_email: formData.email, from_phone: formData.phone, message: msgHTML }, { publicKey: EMAILJS_PUBLIC_KEY });
       submissionTimes.push(Date.now()); setLoading(false); setSubmitted(true);
-    } catch { setLoading(false); setError("Something went wrong. Please call 08067514506."); }
+    } catch { setLoading(false); setError("Something went wrong. Please call 0913 420 6766."); }
   };
 
   const resetForm = () => {
@@ -326,8 +326,8 @@ const ContactSection = ({ preselectedService = "" }) => {
               <p className="text-gray-500 text-sm leading-relaxed">We are available 24/7, reach us anytime.</p>
             </div>
             {[
-              {icon:Phone, color:"bg-blue-100 text-blue-700",   label:"Phone",  value:"08067514506",              href:"tel:08067514506"},
-              {icon:MessageCircle, color:"bg-emerald-100 text-emerald-700", label:"WhatsApp (customer care)", value:"0916 324 3280", href:waLink("Hello RiskTech, I would like some help with insurance."), ext:true},
+              {icon:Phone, color:"bg-blue-100 text-blue-700",   label:"Phone",  value:"0913 420 6766",              href:"tel:+2349134206766"},
+              {icon:MessageCircle, color:"bg-emerald-100 text-emerald-700", label:"WhatsApp (customer care)", value:"0913 420 6766", href:waLink("Hello RiskTech, I would like some help with insurance."), ext:true},
               {icon:Mail,  color:"bg-green-100 text-green-700", label:"Email",  value:"risktechbrokers@gmail.com", href:"mailto:risktechbrokers@gmail.com"},
               {icon:MapPin,color:"bg-orange-100 text-orange-700",label:"Office",value:"Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos.", href:null},
             ].map(c=>{

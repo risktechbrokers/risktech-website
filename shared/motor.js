@@ -34,8 +34,10 @@ export const BANK = {
   accountNumber: '0025096325',
 };
 
-export const WHATSAPP = '2349163243280'; // 0916 324 3280, customer care
-export const CONTACT_PHONE = '08067514506';
+// One number for everything: calls, WhatsApp and payment receipts
+export const WHATSAPP = '2349134206766';
+export const CONTACT_PHONE = '09134206766';
+export const CONTACT_PHONE_DISPLAY = '0913 420 6766';
 export const CONTACT_EMAIL = 'risktechbrokers@gmail.com';
 
 // Number series agreed with NPF: NPF/EMPT/RP/26/011*** and WAX26/011***
@@ -71,7 +73,7 @@ export function addYearMinusDay(iso) {
 // opts.allowPastStart: staff may issue with an earlier start date if they choose to
 export function validateOrder(input, opts = {}) {
   const errors = {};
-  const product = PRODUCTS[input?.product] ? input.product : null;
+  const product = typeof input?.product === 'string' && Object.prototype.hasOwnProperty.call(PRODUCTS, input.product) ? input.product : null;
   if (!product) errors.product = 'Choose a cover type.';
 
   const v = {

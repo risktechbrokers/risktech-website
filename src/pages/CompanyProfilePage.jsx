@@ -119,7 +119,7 @@ const CompanyProfilePage = ({ navigate }) => (
             <h3 className="font-bold text-gray-900 text-base mb-3">Our Office</h3>
             <div className="space-y-2 text-sm text-gray-600">
               <div className="flex items-start gap-2"><MapPin size={14} className="text-blue-600 mt-0.5 flex-shrink-0" /><span>Shop 41, Alakija Shopping Complex, WAEC Street, Jibowu, Yaba, Lagos</span></div>
-              <div className="flex items-center gap-2"><Phone size={14} className="text-blue-600 flex-shrink-0" /><a href="tel:08067514506" className="hover:text-blue-600">08067514506</a></div>
+              <div className="flex items-center gap-2"><Phone size={14} className="text-blue-600 flex-shrink-0" /><a href="tel:+2349134206766" className="hover:text-blue-600">0913 420 6766</a></div>
               <div className="flex items-center gap-2"><Mail size={14} className="text-blue-600 flex-shrink-0" /><a href="mailto:risktechbrokers@gmail.com" className="hover:text-blue-600">risktechbrokers@gmail.com</a></div>
             </div>
           </div>

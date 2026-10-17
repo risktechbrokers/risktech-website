@@ -65,6 +65,12 @@ function App() {
     }, 400);
   }, []);
 
+  // From a hero slide: pick that insurance in the quote form and scroll to it
+  const quoteFromHero = useCallback((serviceTitle) => {
+    setSelectedService(serviceTitle);
+    setTimeout(() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  }, []);
+
   const handleOverlayComplete = useCallback(() => {
     setShowOverlay(false);
   }, []);
@@ -117,7 +123,7 @@ function App() {
 
         {currentPage === "home" && (
           <main>
-            <HeroSection navigate={navigate} />
+            <HeroSection navigate={navigate} onQuote={quoteFromHero} />
             <StatsBand />
             <ServicesSection navigate={navigate} />
             <MotorPromo navigate={navigate} />

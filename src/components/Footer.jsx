@@ -118,14 +118,14 @@ const Footer = ({ navigate = () => {} }) => {
             <div className="space-y-4">
               <div className="flex gap-3">
                 <Phone size={15} className="text-blue-300 mt-0.5 flex-shrink-0" />
-                <a href="tel:08067514506" className="text-blue-200/70 hover:text-white text-sm transition-colors">
-                  08067514506
+                <a href="tel:+2349134206766" className="text-blue-200/70 hover:text-white text-sm transition-colors">
+                  0913 420 6766
                 </a>
               </div>
               <div className="flex gap-3">
                 <MessageCircle size={15} className="text-blue-300 mt-0.5 flex-shrink-0" />
                 <a href={waLink("Hello RiskTech, I would like some help with insurance.")} target="_blank" rel="noreferrer" className="text-blue-200/70 hover:text-white text-sm transition-colors">
-                  WhatsApp: 0916 324 3280
+                  WhatsApp: 0913 420 6766
                 </a>
               </div>
               <div className="flex gap-3">

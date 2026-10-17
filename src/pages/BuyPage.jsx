@@ -4,8 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import emailjs from "@emailjs/browser";
 import { ArrowLeft, Car, Bike, CheckCircle, AlertCircle, Copy, ChevronRight, ShieldCheck, Landmark, MessageCircle } from "lucide-react";
-import { naira, longDate, store, esc } from "../lib/api";
-import { PRODUCTS, BANK, STATES, CONTACT_PHONE, validateOrder, newReference, encodeOrder, waLink, todayLagos } from "../../shared/motor.js";
+import { api, naira, longDate, store, esc } from "../lib/api";
+import { PRODUCTS, BANK, STATES, CONTACT_PHONE_DISPLAY, validateOrder, newReference, encodeOrder, waLink, todayLagos } from "../../shared/motor.js";
 
 const EMAILJS_SERVICE_ID  = "service_r9hj031";
 const EMAILJS_TEMPLATE_ID = "template_20jtn8c";
@@ -40,6 +40,30 @@ const CopyRow = ({ label, value, strong }) => {
       <button type="button" onClick={copy} className="flex items-center gap-1 text-blue-700 text-xs font-semibold bg-white border border-blue-200 rounded-lg px-3 py-2 hover:bg-blue-50 flex-shrink-0">
         <Copy size={13} /> {done ? "Copied" : "Copy"}
       </button>
+    </div>
+  );
+};
+
+// The reference is the one thing customers must not forget, so it gets its own big box at the top.
+const ReferenceBox = ({ reference }) => {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(reference); setDone(true); setTimeout(() => setDone(false), 2000); } catch { /* ignore */ }
+  };
+  return (
+    <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-5 sm:p-6 text-center" data-testid="reference-box">
+      <p className="text-amber-900 text-xs sm:text-sm font-bold uppercase tracking-wider">Your payment reference</p>
+      <p className="text-gray-950 font-extrabold font-mono tracking-normal sm:tracking-wider my-2 whitespace-nowrap select-all" style={{ fontSize: "clamp(1.25rem, 6vw, 2.4rem)" }}>{reference}</p>
+      <button type="button" onClick={copy}
+        className={`inline-flex items-center gap-2 font-bold text-sm px-5 py-3 rounded-xl transition-colors ${done ? "bg-green-600 text-white" : "bg-gray-900 hover:bg-black text-white"}`}>
+        {done ? <><CheckCircle size={16} /> Copied</> : <><Copy size={16} /> Copy reference</>}
+      </button>
+      <p className="text-gray-900 text-sm mt-4 leading-relaxed">
+        Paste it in the <b>Narration</b>, <b>Description</b> or <b>Remark</b> box of your transfer.
+      </p>
+      <p className="flex items-start justify-center gap-1.5 text-red-700 text-xs sm:text-sm font-semibold mt-2">
+        <AlertCircle size={15} className="mt-0.5 flex-shrink-0" /> Without this reference, your payment may be delayed.
+      </p>
     </div>
   );
 };
@@ -94,16 +118,16 @@ const PaymentStep = ({ order, emailed }) => {
           <h3 className="text-xl font-bold text-gray-900">Step 1: Pay {naira(p.premium)} by transfer</h3>
         </div>
         <p className="text-gray-500 text-sm mb-5">{p.label} for {order.reg_no}, starting {longDate(order.start_date)}.</p>
+
+        <ReferenceBox reference={order.reference} />
+
+        <p className="text-gray-900 font-semibold text-sm mt-6 mb-2">Transfer to this account</p>
         <div className="bg-blue-50 rounded-2xl px-5">
           <CopyRow label="Bank" value={BANK.bankName} />
           <CopyRow label="Account name" value={BANK.accountName} />
           <CopyRow label="Account number" value={BANK.accountNumber} strong />
           <CopyRow label="Amount" value={String(p.premium)} />
-          <CopyRow label="Narration / reference (important)" value={order.reference} strong />
-        </div>
-        <div className="flex items-start gap-2 mt-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>Write <b>{order.reference}</b> in the transfer narration so we can match your payment.</span>
+          <CopyRow label="Narration (paste your reference)" value={order.reference} />
         </div>
       </div>
 
@@ -117,7 +141,7 @@ const PaymentStep = ({ order, emailed }) => {
 
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
         <h3 className="text-xl font-bold text-gray-900 mb-2">Step 3: Receive your certificate</h3>
-        <p className="text-gray-600 text-sm">Once we confirm your payment, we send your NPF Insurance certificate to your WhatsApp{order.email ? " and email" : ""}. Questions? Call {CONTACT_PHONE} and quote {order.reference}.</p>
+        <p className="text-gray-600 text-sm">Once we confirm your payment, we send your NPF Insurance certificate to your WhatsApp{order.email ? " and email" : ""}. Questions? Call or WhatsApp {CONTACT_PHONE_DISPLAY} and quote <b>{order.reference}</b>.</p>
       </div>
     </div>
   );
@@ -144,8 +168,18 @@ const BuyPage = ({ navigate }) => {
     if (!v.ok) { setErrors(v.errors); setError("Please correct the highlighted fields."); return; }
     if (limited()) { setError("Too many orders from this device. Please wait a few minutes or call us."); return; }
     setLoading(true);
-    const o = { ...v.value, reference: newReference(), created_at: new Date().toISOString() };
-    const staffLink = `${window.location.origin}/admin?d=${encodeOrder(o)}`;
+    // The server double-checks the details and signs the order, so the staff page can spot an edited link.
+    // If the server cannot be reached, the order still goes through (unsigned) so no customer is turned away.
+    let o; let sig = "";
+    try {
+      const r = await api("/api/admin", { method: "POST", body: { action: "order", order: form } });
+      o = r.order; sig = r.sig || "";
+    } catch (x) {
+      if (x.status === 400 && x.fields) { setErrors(x.fields); setError("Please correct the highlighted fields."); setLoading(false); return; }
+      if (x.status === 429) { setError(x.message); setLoading(false); return; }
+      o = { ...v.value, reference: newReference(), created_at: new Date().toISOString() };
+    }
+    const staffLink = `${window.location.origin}/admin?d=${encodeOrder(o)}${sig ? `&s=${sig}` : ""}`;
     let ok = true;
     try {
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {

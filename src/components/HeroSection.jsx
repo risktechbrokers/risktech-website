@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronLeft, ChevronRight, ShieldCheck, BadgeCheck, Clock, Car, Bike, HeartPulse, Home, Ship, Briefcase, Wheat } from "lucide-react";
 import { HERO_SLIDES } from "../data/services";
+import { WhatsAppIcon } from "./WhatsAppButton";
+import { waLink } from "../../shared/motor.js";
 
 const ICONS = {
   "Motor insurance": Car,
@@ -13,6 +15,7 @@ const ICONS = {
 };
 
 const SLIDE_MS = 7000;
+const HOLD_MS = 12000; // after a customer taps an arrow or swipes, give them longer to read
 const FADE_S = 1.4;
 const ease = [0.22, 1, 0.36, 1];
 
@@ -29,10 +32,12 @@ const loadImage = (src) =>
     setTimeout(finish, 4000);
   });
 
-const HeroSection = ({ navigate }) => {
+const HeroSection = ({ navigate, onQuote }) => {
   const [current, setCurrent] = useState(0);
   const [prev, setPrev] = useState(null);
   const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  const touch = useRef(null);
   const busy = useRef(false);
   const currentRef = useRef(0);
 
@@ -51,14 +56,26 @@ const HeroSection = ({ navigate }) => {
 
   const next = useCallback(() => goTo(current + 1), [current, goTo]);
   const back = useCallback(() => goTo(current - 1), [current, goTo]);
+  // Moves chosen by the customer (arrows, dots, swipe) hold the slide a little longer
+  const manual = useCallback((fn) => { setHeld(true); fn(); }, []);
 
   // Auto-advance. Pausing only happens for a real mouse hovering on a computer,
   // never for a finger on a phone (touching used to freeze the slideshow).
   useEffect(() => {
     if (paused) return;
-    const t = setTimeout(next, SLIDE_MS);
+    const t = setTimeout(() => { setHeld(false); next(); }, held ? HOLD_MS : SLIDE_MS);
     return () => clearTimeout(t);
-  }, [next, paused, current]);
+  }, [next, paused, current, held]);
+
+  // Swipe left or right on phones
+  const onTouchStart = (e) => { const t = e.touches[0]; touch.current = { x: t.clientX, y: t.clientY }; };
+  const onTouchEnd = (e) => {
+    const start = touch.current; touch.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x; const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) manual(dx < 0 ? next : back);
+  };
 
   // Warm up the next photo in the background
   useEffect(() => {
@@ -70,7 +87,8 @@ const HeroSection = ({ navigate }) => {
   const [line1, line2] = slide.headline.split("\n");
   const Icon = ICONS[slide.label] || ShieldCheck;
 
-  const scrollToContact = () => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+  const primary = () => (slide.buy ? navigate("buy") : onQuote?.(slide.quote));
+  const chat = waLink(`Hello RiskTech, I would like ${slide.wa || "insurance"}.`);
 
   return (
     <section
@@ -78,6 +96,8 @@ const HeroSection = ({ navigate }) => {
       className="relative h-[100svh] min-h-[640px] max-h-[1000px] overflow-hidden bg-[#0B1F4B]"
       onPointerEnter={(e) => { if (e.pointerType === "mouse") setPaused(true); }}
       onPointerLeave={(e) => { if (e.pointerType === "mouse") setPaused(false); }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
       {/* Photos: the new one fades in on top while the previous stays fully visible underneath (no dark flash) */}
       {HERO_SLIDES.map((s, i) => {
@@ -108,7 +128,7 @@ const HeroSection = ({ navigate }) => {
       <div className="absolute inset-0 z-[4] hidden lg:block" style={{ background: "linear-gradient(90deg, rgba(8,18,40,0.86) 0%, rgba(8,18,40,0.55) 50%, rgba(8,18,40,0.2) 100%)" }} />
 
       {/* Content */}
-      <div className="relative z-10 h-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 flex items-center pt-20 pb-16">
+      <div className="relative z-10 h-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 flex items-center pt-20 pb-36 lg:pb-16">
         <div className="w-full grid lg:grid-cols-[1.35fr_0.85fr] gap-10 items-center">
 
           <div className="text-center lg:text-left">
@@ -131,16 +151,16 @@ const HeroSection = ({ navigate }) => {
               </motion.div>
             </AnimatePresence>
 
-            {/* Two buttons, side by side on phones too */}
+            {/* Two buttons that match the slide, side by side on phones too */}
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mt-7 max-w-md sm:max-w-none mx-auto lg:mx-0 justify-center lg:justify-start">
-              <button onClick={() => navigate("buy")}
-                className="group whitespace-nowrap bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl shadow-lg shadow-blue-950/40 transition-colors flex items-center justify-center gap-2">
-                Buy Motor Insurance <ArrowRight size={18} className="hidden sm:block group-hover:translate-x-1 transition-transform" />
+              <button onClick={primary} data-testid="hero-primary"
+                className="group whitespace-nowrap bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[13px] min-[375px]:text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl shadow-lg shadow-blue-950/40 transition-colors flex items-center justify-center gap-2">
+                {slide.cta} <ArrowRight size={18} className="hidden sm:block group-hover:translate-x-1 transition-transform" />
               </button>
-              <button onClick={scrollToContact}
-                className="whitespace-nowrap bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/60 text-white font-semibold text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl transition-colors">
-                Get a Quote
-              </button>
+              <a href={chat} target="_blank" rel="noreferrer" data-testid="hero-chat"
+                className="whitespace-nowrap bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/60 text-white font-semibold text-[13px] min-[375px]:text-[14px] min-[390px]:text-[15px] sm:text-base px-2 sm:px-7 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                <WhatsAppIcon size={18} className="text-[#25D366] flex-shrink-0" /> Chat on WhatsApp
+              </a>
             </div>
 
             {/* Trust row */}
@@ -176,19 +196,25 @@ const HeroSection = ({ navigate }) => {
         </div>
       </div>
 
-      {/* Slide controls */}
-      <div className="absolute bottom-6 left-0 right-0 z-20">
+      {/* Slide controls: arrows either side of the dots on phones, arrows on the right on computers */}
+      <div className="absolute bottom-[92px] lg:bottom-6 left-0 right-0 z-20">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 flex items-center justify-center lg:justify-between">
-          <div className="flex items-center gap-1.5">
-            {HERO_SLIDES.map((s, i) => (
-              <button key={s.label} aria-label={`Show ${s.label}`} onClick={() => goTo(i)} className="p-1.5">
-                <span className={`block h-1.5 rounded-full transition-all duration-500 ${i === current ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"}`} />
-              </button>
-            ))}
+          <div className="flex items-center gap-3 lg:gap-0">
+            <button onClick={() => manual(back)} aria-label="Previous slide" data-testid="hero-prev-m"
+              className="lg:hidden w-11 h-11 rounded-full border border-white/60 bg-white/10 backdrop-blur-sm text-white active:bg-white/25 flex items-center justify-center"><ChevronLeft size={20} /></button>
+            <div className="flex items-center gap-1">
+              {HERO_SLIDES.map((s, i) => (
+                <button key={s.label} aria-label={`Show ${s.label}`} onClick={() => manual(() => goTo(i))} className="p-1.5">
+                  <span className={`block h-1.5 rounded-full transition-all duration-500 ${i === current ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"}`} />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => manual(next)} aria-label="Next slide" data-testid="hero-next-m"
+              className="lg:hidden w-11 h-11 rounded-full border border-white/60 bg-white/10 backdrop-blur-sm text-white active:bg-white/25 flex items-center justify-center"><ChevronRight size={20} /></button>
           </div>
           <div className="hidden lg:flex items-center gap-2 mr-24">
-            <button onClick={back} aria-label="Previous slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronLeft size={18} /></button>
-            <button onClick={next} aria-label="Next slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronRight size={18} /></button>
+            <button onClick={() => manual(back)} aria-label="Previous slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronLeft size={18} /></button>
+            <button onClick={() => manual(next)} aria-label="Next slide" className="w-10 h-10 rounded-full border border-white/30 text-white/90 hover:bg-white/10 flex items-center justify-center"><ChevronRight size={18} /></button>
           </div>
         </div>
       </div>

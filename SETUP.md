@@ -1,56 +1,59 @@
-# RiskTech website v17: how to put it live
+# RiskTech website v20
 
-## What is new
-- Buy Motor Insurance page (/buy): Private Motor N15,000, Motorcycle N3,000, paid by transfer to Jaiz Bank 0025096325.
-- Each order is emailed to risktechbrokers@gmail.com with a button that opens it in the staff page.
-- Staff page (/admin): download the NPF certificate and send the policy to NPF.
-- WhatsApp customer care button (0916 324 3280) on every page, plus WhatsApp in the contact section and footer.
-- Google Map of the Yaba office, FAQ section, refreshed home page.
-- New company profile PDF, leadership updated to 5 people, NCRIB and share capital removed, indemnity shown as N100,000,000.
+## What is new in v20
+1. One number everywhere: **0913 420 6766** for calls, WhatsApp and payment receipts.
+2. Staff page: **Send to NPF first**. The certificate unlocks only after NPF says SUCCESS.
+3. Payment page: the **reference is big and bold** at the top, with a Copy button and "type it in Narration / Description / Remark".
+4. Slideshow on phones: **left and right arrows**, plus swipe.
+5. Each slide matches its insurance: "Get a Health Quote" opens the form with Health already chosen, and "Chat on WhatsApp" sends a matching message.
+6. Security hardening (details below).
+7. Staff page: clear messages, NPF's exact reply, no double sending, and a **Check NPF connection** button.
 
-No database and no Paystack. Nothing here costs money.
+## Upload (same as before)
+1. Unzip risktech-v20.zip.
+2. github.com/risktechbrokers/risktech-website, then Add file, then Upload files.
+3. Open the unzipped `risktech` folder and drag **everything inside it** into the box.
+4. Message: `v20 security and NPF first`, then Commit changes. Vercel rebuilds in 1 to 2 minutes.
 
-## Step 1: upload to GitHub (browser only, no git needed)
-1. Unzip risktech-v17.zip on your phone or computer.
-2. Go to github.com/risktechbrokers/risktech-website and sign in.
-3. Press "Add file", then "Upload files".
-4. Open the unzipped `risktech` folder and drag EVERYTHING inside it (the folders `api`, `shared`, `src`, `public` and the files `package.json`, `package-lock.json`, `vercel.json`, `SETUP.md` and the rest) into the upload box. Do not drag the `risktech` folder itself, drag what is inside it.
-5. Write "v17 motor platform" as the message and press "Commit changes".
-6. Vercel rebuilds the site by itself in 1 to 2 minutes.
+No new Vercel settings are needed. ADMIN_PASSWORD, ADMIN_SECRET, NPF_USERNAME, NPF_PASSWORD and NPF_NIA_NAICOM_ID are all used.
 
-With git instead: unzip over your project folder, then `git add .`, `git commit -m "v17 motor platform"`, `git push`.
+## Daily use (new order)
+1. The customer fills the form. You get the email "NEW MOTOR POLICY ORDER".
+2. The customer pays and sends the receipt to WhatsApp 0913 420 6766 with their reference (RT-...).
+3. Check Jaiz Bank. When the money is there, press "Open in staff page to issue" in the email and sign in.
+4. Green "Genuine order from the website" means the link was not changed. A red warning means check every detail against the papers.
+5. Tick the payment box, then press **1. Send to NPF**.
+6. NPF SUCCESS unlocks **2. Download certificate**. Press it, then "WhatsApp customer", and attach the PDF.
+7. Press "Copy row" and paste it into the office spreadsheet.
 
-## Step 2: settings in Vercel (once)
-Vercel > your project > Settings > Environment Variables. Add:
+What the NPF messages mean:
+- SUCCESS: done, download the certificate.
+- NOT ACCEPTED: NPF rejected a detail. Read "NPF said", correct it, and send again.
+- ACCOUNT OR SETTINGS PROBLEM: the account may not be active. Send NPF's full reply to Aliyu.
+- TRY AGAIN: NPF did not answer. Wait a few minutes.
+- CONNECTION LOST: the internet dropped. Wait 2 minutes and send again. If NPF then says "already exists", the first one worked, so tell IT.
 
-| Name | Value |
-|---|---|
-| ADMIN_PASSWORD | a long password for the staff page |
-| ADMIN_SECRET | any long random text (keeps staff logins safe) |
-| NPF_USERNAME | from NPF (ask Aliyu for new ones) |
-| NPF_PASSWORD | from NPF |
-| NPF_NIA_NAICOM_ID | ask Aliyu which ID to send (their samples show 1140) |
+## Security: what the website now does
+- Passwords and NPF details live only in Vercel Secrets, never in the code or on GitHub.
+- Staff login: 5 wrong tries and that connection is blocked for 15 minutes. Each wrong try is slowed down. A login lasts 8 hours. Changing ADMIN_PASSWORD signs everyone out at once.
+- Order links in emails are signed, so an edited link is flagged.
+- A certificate can only be made with NPF's SUCCESS receipt, for exactly the details NPF accepted.
+- The server re-checks every detail. Requests from other websites are refused. Oversized or broken requests are refused.
+- The NPF password is never sent to the browser, even if NPF repeats it in a message.
+- A strict browser shield (Content Security Policy) blocks scripts from other websites and stops the site being placed inside another site.
+- The staff page and API are hidden from Google.
+- The libraries that run on the live site have 0 known weaknesses (npm audit).
 
-Then Deployments > the latest one > "Redeploy" so the settings take effect.
+## Security: your checklist (the most important part)
+The biggest risk is someone getting into an account, not the code.
+- [ ] Turn on 2-step verification on GitHub (risktechbrokers), Vercel, Gmail (risktechbrokers@gmail.com), Namecheap and EmailJS.
+- [ ] Change ADMIN_PASSWORD in Vercel to a new one only you know (the old one was typed in chat), then Redeploy.
+- [ ] EmailJS: Account, then Security, then turn on "Allow EmailJS API for selected domains" with `risktechinsurance.com` and `www.risktechinsurance.com`.
+- [ ] Consider making the GitHub repo Private (Settings, then General, then Danger Zone, then Change visibility). Check the site still deploys afterwards.
+- [ ] Keep all passwords in the Apple Passwords app, not in notes or chats.
 
-## Step 3: daily use
-1. A customer fills the form on /buy. You get an email "NEW MOTOR POLICY ORDER" with their details.
-2. The customer pays and sends the receipt on WhatsApp with their reference (RT-...).
-3. Check the Jaiz Bank app. Only when the money is there, open the email and press "Open in staff page to issue".
-4. Sign in, check the details, tick "I have checked the Jaiz Bank account", then:
-   - press "1. Download certificate", then
-   - press "2. Send to NPF". Green SUCCESS means NPF accepted it.
-5. Press "WhatsApp customer", attach the certificate PDF in WhatsApp and send.
-6. Press "Copy row" and paste it into the office spreadsheet. That spreadsheet is the official record.
-
-The number box suggests the next number (011001, 011002...). It remembers only on the device you use, so always check the last number in the spreadsheet, especially if two people issue certificates.
-
-Walk-in customer: open /admin, press "New walk-in sale" and type the details.
-
-If NPF says RETRY: wait a few minutes and press "2. Send to NPF" again.
-If NPF says MANUAL REVIEW: read the message. "Account not enabled" means Aliyu must activate RiskTech's account.
-
-## Good to know
-- Order emails use your existing EmailJS account. The free EmailJS plan has a monthly limit (contact form, claims and orders share it). If orders stop arriving by email, the customer still sees a "Send my details on WhatsApp" button, so nothing is lost.
-- Prices, cover wording and the bank account are all in one file: `shared/motor.js`.
-- Your old company phone 08067514506 is still used on the website. The new profile lists 08055532488. Tell me which one to show.
+## First live NPF test
+1. On the staff page press **Check NPF connection**. It should say "Ready".
+2. WhatsApp Aliyu: "We're ready to send the test now, please activate the endpoint."
+3. Use a real vehicle with correct papers, then press Send to NPF.
+4. Screenshot the result (open "Show NPF's full reply" if it isn't SUCCESS).

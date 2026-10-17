@@ -63,7 +63,7 @@ const ClaimsPage = ({ navigate }) => {
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { from_name: form.claimant_name, from_email: form.email, from_phone: form.phone, message: msgHTML }, { publicKey: EMAILJS_PUBLIC_KEY });
       submitTimes.push(Date.now()); setLoading(false); setStep(2);
     } catch {
-      setLoading(false); setError("Something went wrong. Please call 08067514506.");
+      setLoading(false); setError("Something went wrong. Please call 0913 420 6766.");
     }
   };
 
@@ -229,8 +229,8 @@ const ClaimsPage = ({ navigate }) => {
             <div className="bg-blue-700 rounded-2xl p-6 text-white">
               <p className="font-bold text-base mb-2">Need Urgent Help?</p>
               <p className="text-blue-200 text-sm mb-4 leading-relaxed">For urgent claims or emergencies, call us directly. We are available 24/7.</p>
-              <a href="tel:08067514506" className="flex items-center gap-2 bg-white text-blue-700 font-bold px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-sm">
-                <Phone size={16}/> 08067514506
+              <a href="tel:+2349134206766" className="flex items-center gap-2 bg-white text-blue-700 font-bold px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-sm">
+                <Phone size={16}/> 0913 420 6766
               </a>
               <a href="mailto:risktechbrokers@gmail.com" className="flex items-center gap-2 bg-white/15 text-white font-semibold px-4 py-3 rounded-xl hover:bg-white/25 transition-colors text-sm mt-2">
                 <Mail size={16}/> risktechbrokers@gmail.com
