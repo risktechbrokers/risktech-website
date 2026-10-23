@@ -10,8 +10,7 @@
   ],
   "functions": {
     "api/admin.js": {
-      "includeFiles": "api/_assets/**",
-      "maxDuration": 30
+      "maxDuration": 60
     }
   },
   "headers": [

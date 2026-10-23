@@ -1,30 +1,23 @@
 // Shared by the website (browser) and the serverless functions.
 // Change prices, wording or the bank account here and both sides follow.
+import { LGAS, NPF_STATES } from './lgas.js';
 
+export { LGAS };
+export const STATES = NPF_STATES;
+
+// RiskTech's selling prices. NPF's own product and vehicle-type numbers come from NPF's reference list.
 export const PRODUCTS = {
   private_motor: {
     label: 'Private Motor (Third Party)',
     short: 'Private Motor',
     premium: 15000,
-    sumAssured: 1000000,
-    coverType: 'PRIVATE MOTOR',
-    typeOfCover: 'P',
-    vehicleCategory: 'Car',
-    policyPrefix: 'RP',
-    limitation: 'THIRD PARTY (PRIVATE MOTOR)',
-    bodyTypes: ['Saloon', 'SUV', 'Hatchback', 'Wagon', 'Coupe', 'Bus', 'Pickup', 'Van'],
+    npfVehicleType: /private/i,      // which NPF vehicle type this product is for
   },
   motorcycle: {
     label: 'Motorcycle (Third Party)',
     short: 'Motorcycle',
     premium: 3000,
-    sumAssured: 1000000,
-    coverType: 'MOTORCYCLE',
-    typeOfCover: 'P',
-    vehicleCategory: 'Motorcycle',
-    policyPrefix: 'RP',
-    limitation: 'THIRD PARTY (MOTORCYCLE)',
-    bodyTypes: ['Motorcycle'],
+    npfVehicleType: /motor\s*cycle|bike/i,
   },
 };
 
@@ -40,17 +33,15 @@ export const CONTACT_PHONE = '09134206766';
 export const CONTACT_PHONE_DISPLAY = '0913 420 6766';
 export const CONTACT_EMAIL = 'risktechbrokers@gmail.com';
 
-// Number series agreed with NPF: NPF/EMPT/RP/26/011*** and WAX26/011***
-export const SERIES = { block: '011', width: 3, max: 999 };
-
-export const STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT Abuja','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara'];
-
-export const FIELDS = ['product','insured_name','email','phone','address','zone','reg_no','old_reg_no','chassis_no','engine_no','engine_capacity','vehicle_make','vehicle_model','vehicle_type','vehicle_color','year_of_make','start_date'];
+// NPF's public page where customers download their own Certificate and Brown Card
+export const NPF_LOOKUP_URL = 'https://motor.npfinsurance.com/policy-lookup';
 
 const clean = (v, max = 200) =>
   String(v ?? '').replace(/<[^>]*>/g, '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 const normReg = (v) => clean(v, 20).toUpperCase().replace(/[\s-]/g, '');
 const normVin = (v) => clean(v, 30).toUpperCase().replace(/\s/g, '');
+const toId = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
+const own = (obj, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(obj, k);
 
 export function normalisePhone(v) {
   let p = String(v ?? '').replace(/[^\d+]/g, '');
@@ -70,43 +61,67 @@ export function addYearMinusDay(iso) {
   return d.toISOString().slice(0, 10);
 }
 
-// opts.allowPastStart: staff may issue with an earlier start date if they choose to
+export const insuredName = (o) =>
+  o?.insured_type === 'company' ? clean(o.company_name, 150) : clean(`${o?.firstname ?? ''} ${o?.lastname ?? ''}`, 150);
+
+// Checks an order.
+//   opts.allowPastStart: staff may issue with an earlier start date
+//   opts.strict: the order is about to go to NPF, so NPF's list numbers (make, body type) must be present
 export function validateOrder(input, opts = {}) {
   const errors = {};
-  const product = typeof input?.product === 'string' && Object.prototype.hasOwnProperty.call(PRODUCTS, input.product) ? input.product : null;
+  const i = input && typeof input === 'object' ? input : {};
+  const product = own(PRODUCTS, i.product) ? i.product : null;
   if (!product) errors.product = 'Choose a cover type.';
+  const insured_type = i.insured_type === 'company' ? 'company' : 'personal';
 
   const v = {
     product,
-    insured_name: clean(input.insured_name, 120),
-    email: clean(input.email, 120).toLowerCase(),
-    phone: normalisePhone(input.phone),
-    address: clean(input.address, 250),
-    zone: clean(input.zone, 60),
-    reg_no: normReg(input.reg_no),
-    old_reg_no: normReg(input.old_reg_no) || normReg(input.reg_no),
-    chassis_no: normVin(input.chassis_no),
-    engine_no: normVin(input.engine_no),
-    engine_capacity: clean(input.engine_capacity, 10),
-    vehicle_make: clean(input.vehicle_make, 60),
-    vehicle_model: clean(input.vehicle_model, 60),
-    vehicle_type: clean(input.vehicle_type, 40),
-    vehicle_color: clean(input.vehicle_color, 30),
-    year_of_make: clean(input.year_of_make, 4),
-    start_date: clean(input.start_date, 10),
+    insured_type,
+    firstname: insured_type === 'personal' ? clean(i.firstname, 60) : '',
+    lastname: insured_type === 'personal' ? clean(i.lastname, 60) : '',
+    company_name: insured_type === 'company' ? clean(i.company_name, 150) : '',
+    company_rc_number: insured_type === 'company' ? clean(i.company_rc_number, 20).toUpperCase() : '',
+    nin: String(i.nin ?? '').replace(/\D/g, '').slice(0, 11),
+    email: clean(i.email, 120).toLowerCase(),
+    phone: normalisePhone(i.phone),
+    address: clean(i.address, 250),
+    state: own(LGAS, i.state) ? i.state : '',
+    lga: '',
+    reg_no: normReg(i.reg_no),
+    chassis_no: normVin(i.chassis_no),
+    engine_no: normVin(i.engine_no),
+    engine_capacity: clean(i.engine_capacity, 10),
+    vehicle_make_id: toId(i.vehicle_make_id),
+    vehicle_make: clean(i.vehicle_make, 60),
+    vehicle_model_id: toId(i.vehicle_model_id),
+    vehicle_model: clean(i.vehicle_model, 60),
+    body_type_id: toId(i.body_type_id),
+    vehicle_type: clean(i.vehicle_type, 40), // body type name, e.g. Saloon
+    vehicle_color: clean(i.vehicle_color, 30),
+    year_of_make: clean(i.year_of_make, 4),
+    start_date: clean(i.start_date, 10),
   };
+  if (v.state && LGAS[v.state].includes(i.lga)) v.lga = i.lga;
 
-  if (v.insured_name.length < 3) errors.insured_name = 'Enter the full name of the policy holder.';
+  if (insured_type === 'personal') {
+    if (v.firstname.length < 2) errors.firstname = 'Enter the first name.';
+    if (v.lastname.length < 2) errors.lastname = 'Enter the last name.';
+  } else if (v.company_name.length < 3) errors.company_name = 'Enter the registered company name.';
+  if (!/^\d{11}$/.test(v.nin)) errors.nin = 'Enter the 11-digit NIN.';
   if (!/^0\d{10}$/.test(v.phone)) errors.phone = 'Enter an 11-digit Nigerian phone number.';
   if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) errors.email = 'Enter a valid email address.';
   if (v.address.length < 5) errors.address = 'Enter the contact address.';
-  if (!v.zone) errors.zone = 'Select the state.';
+  if (!v.state) errors.state = 'Select the state.';
+  if (!v.lga) errors.lga = 'Select the LGA.';
   if (v.reg_no.length < 5) errors.reg_no = 'Enter the plate number.';
   if (v.chassis_no.length < 5) errors.chassis_no = 'Enter the chassis number.';
   if (v.engine_no.length < 3) errors.engine_no = 'Enter the engine number.';
-  if (!v.vehicle_make) errors.vehicle_make = 'Enter the make.';
-  if (!v.vehicle_model) errors.vehicle_model = 'Enter the model.';
-  if (!v.vehicle_type) errors.vehicle_type = 'Choose the body type.';
+  if (!v.vehicle_make_id && !v.vehicle_make) errors.vehicle_make_id = 'Choose the make.';
+  if (!v.body_type_id && !v.vehicle_type) errors.body_type_id = 'Choose the body type.';
+  if (opts.strict) {
+    if (!v.vehicle_make_id) errors.vehicle_make_id = 'Pick the make from NPF\'s list.';
+    if (!v.body_type_id) errors.body_type_id = 'Pick the body type from NPF\'s list.';
+  }
   if (!v.vehicle_color) errors.vehicle_color = 'Enter the colour.';
   const yr = Number(v.year_of_make);
   if (!(yr >= 1950 && yr <= new Date().getFullYear() + 1)) errors.year_of_make = 'Enter a valid year.';
@@ -119,17 +134,6 @@ export function validateOrder(input, opts = {}) {
   if (v.start_date > max.toISOString().slice(0, 10)) errors.start_date = 'Start date can be at most 30 days ahead.';
 
   return { ok: Object.keys(errors).length === 0, errors, value: v };
-}
-
-export function policyNumbers(product, seq, isoDate) {
-  const n = Number(seq);
-  if (!Number.isInteger(n) || n < 1 || n > SERIES.max) throw new Error(`Sequence must be a whole number from 1 to ${SERIES.max}.`);
-  const yy = String(isoDate || todayLagos()).slice(2, 4);
-  const suffix = SERIES.block + String(n).padStart(SERIES.width, '0');
-  return {
-    policy_no: `NPF/EMPT/${PRODUCTS[product].policyPrefix}/${yy}/${suffix}`,
-    certificate_no: `WAX${yy}/${suffix}`,
-  };
 }
 
 export function newReference() {
@@ -155,8 +159,12 @@ export function decodeOrder(s) {
     const json = typeof atob === 'function'
       ? decodeURIComponent(escape(atob(b64)))
       : Buffer.from(b64, 'base64').toString('utf8');
-    return JSON.parse(json);
+    const o = JSON.parse(json);
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : null;
   } catch { return null; }
 }
 
 export const waLink = (text) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
+
+// Masks a NIN for display: 12345678901 -> *******8901
+export const maskNin = (n) => (n ? '*'.repeat(Math.max(0, String(n).length - 4)) + String(n).slice(-4) : '');

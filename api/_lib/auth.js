@@ -54,8 +54,25 @@ const orderText = (o) => JSON.stringify(ORDER_KEYS.map((k) => String(o?.[k] ?? '
 export const signOrder = (o) => (secret() ? sign('order', orderText(o)) : '');
 export const verifyOrder = (o, sig) => !!secret() && same(sig, sign('order', orderText(o)));
 
-// NPF receipt: given only when NPF says SUCCESS. A certificate can only be built with a matching receipt.
-const RECEIPT_KEYS = ['policy_no', 'certificate_no', 'product', 'insured_name', 'reg_no', 'chassis_no', 'engine_no', 'start_date', 'end_date'];
-const receiptText = (p) => JSON.stringify(RECEIPT_KEYS.map((k) => String(p?.[k] ?? '')));
-export const npfReceipt = (p) => sign('npf-receipt', receiptText(p));
-export const verifyReceipt = (p, r) => !!secret() && same(r, sign('npf-receipt', receiptText(p)));
+// Order links: the whole order (including the NIN) is encrypted with a key only the server has.
+// The link in the email can only be opened by a signed-in staff member, and any change to it is detected.
+const orderKey = () => crypto.createHash('sha256').update(`order-lock:${secret()}`).digest();
+
+export function lockOrder(o) {
+  if (!secret()) return '';
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', orderKey(), iv);
+  const enc = Buffer.concat([c.update(JSON.stringify(o), 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), enc]).toString('base64url');
+}
+
+export function unlockOrder(token) {
+  try {
+    const b = Buffer.from(String(token || ''), 'base64url');
+    if (b.length < 29 || !secret()) return null;
+    const d = crypto.createDecipheriv('aes-256-gcm', orderKey(), b.subarray(0, 12));
+    d.setAuthTag(b.subarray(12, 28));
+    const o = JSON.parse(Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'));
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : null;
+  } catch { return null; }
+}
