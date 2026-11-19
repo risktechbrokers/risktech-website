@@ -1,7 +1,7 @@
 // Activities: a history of everything done on the staff page, plus orders from the website.
 // Shared: every signed-in device sees the same history. Kept for 12 months.
 import { useEffect, useMemo, useState } from "react";
-import { History, RefreshCw, LogIn, LogOut, ShieldAlert, ShoppingCart, CheckCircle, XCircle, AlertTriangle, Pencil, Ban, FileDown, Settings, ShieldCheck, CloudUpload, Search, Loader2 } from "lucide-react";
+import { History, ClipboardList, RefreshCw, LogIn, LogOut, ShieldAlert, ShoppingCart, CheckCircle, XCircle, AlertTriangle, Pencil, Ban, FileDown, Settings, ShieldCheck, CloudUpload, Search, Loader2 } from "lucide-react";
 import { input } from "./common";
 
 const ICON = {
@@ -18,6 +18,7 @@ const ICON = {
   setting: [Settings, "text-purple-700 bg-purple-50"],
   security: [ShieldCheck, "text-purple-700 bg-purple-50"],
   import: [CloudUpload, "text-blue-700 bg-blue-50"],
+  claim: [ClipboardList, "text-orange-700 bg-orange-50"],
 };
 const FILTERS = [
   ["all", "All", null],
@@ -25,6 +26,7 @@ const FILTERS = [
   ["policies", "Policies", ["issued", "not-issued", "no-answer", "import"]],
   ["changes", "Corrections and cancels", ["corrected", "cancelled"]],
   ["orders", "Website orders", ["order"]],
+  ["claims", "Claims", ["claim"]],
   ["downloads", "Downloads", ["download"]],
   ["settings", "Settings and security", ["setting", "security"]],
 ];

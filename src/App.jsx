@@ -24,6 +24,7 @@ const LegalPage         = lazy(() => import("./pages/LegalPage"));
 const PATHS = { home: "/", services: "/services", "company-profile": "/company-profile", claims: "/claims", buy: "/buy", admin: "/admin", terms: "/terms", privacy: "/privacy" };
 const pageFromPath = () => {
   const p = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (/^\/admin(\/|$)/.test(p)) return "admin"; // the staff area has its own pages (/admin/claims, /admin/report ...)
   return Object.keys(PATHS).find((k) => PATHS[k] === p) || "home";
 };
 

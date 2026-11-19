@@ -119,8 +119,8 @@ export function validateOrder(input, opts = {}) {
   if (!v.vehicle_make_id && !v.vehicle_make) errors.vehicle_make_id = 'Choose the make.';
   if (!v.body_type_id && !v.vehicle_type) errors.body_type_id = 'Choose the body type.';
   if (opts.strict) {
-    if (!v.vehicle_make_id) errors.vehicle_make_id = 'Pick the make from NPF\'s list.';
-    if (!v.body_type_id) errors.body_type_id = 'Pick the body type from NPF\'s list.';
+    if (!v.vehicle_make_id) errors.vehicle_make_id = 'Pick the make from the insurer\'s list.';
+    if (!v.body_type_id) errors.body_type_id = 'Pick the body type from the insurer\'s list.';
   }
   if (!v.vehicle_color) errors.vehicle_color = 'Enter the colour.';
   const yr = Number(v.year_of_make);
@@ -198,3 +198,6 @@ export function plateWarnings(raw) {
 
 // Characters that are easy to mix up when typing a plate
 export const CONFUSABLE = /[0OQDI1LZ2S5G6B8]/;
+
+// The insurer that issues policies sold online. Kept in one place so another insurer can be added later.
+export const INSURER = { key: 'npf', name: 'NPF Insurance' };

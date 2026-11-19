@@ -1,4 +1,50 @@
-# RiskTech website v22: shared policy list, safety checks, 2-step login
+# RiskTech website v23: staff pages, photos, claims
+
+## What changed in v23
+1. **The staff area is now "RiskTech Staff" with separate pages.** A menu (along the top on a computer, at the bottom on a phone) has:
+   - **Policies**: the issue form and All policies;
+   - **Claims**: new;
+   - **Report**;
+   - **Activities**;
+   - **Settings**: switches, 2-step login, and "Check insurer connection".
+
+   Each page has its own address (/admin, /admin/claims, /admin/report, /admin/activity, /admin/settings), so refreshing keeps you on the same page.
+2. **The insurer is no longer in the page name.**
+   - The issue form shows "Insurer: NPF Insurance".
+   - The button says "Send to insurer (NPF Insurance)".
+   - Each policy row and the spreadsheet download show the insurer.
+   - Another insurer can be added later without renaming everything.
+3. **"My make isn't listed"** on the buy form (for example a Spiro electric bike). The customer types the make and model.
+   - The order email and the staff page clearly warn: "not on the insurer's list".
+   - Staff must pick the closest listed make, or ask the insurer to add it, before sending.
+4. **Photos on the buy form:**
+   - 1 required photo of the vehicle showing the plate, plus optional vehicle papers and chassis number (up to 3).
+   - The phone shrinks each photo first (a 3 MB photo becomes about 0.3 MB).
+   - Staff see them on the order ("Customer's photos") and in All policies.
+5. **Photos on the claim form:** at least 1 and up to 8, either photos of the damage or loss, or supporting documents (police report, receipts, medical report).
+   - Each claim is now also **saved**, as well as emailed, and gets a reference (CL-...).
+   - The new **Claims** page shows each claim with its photos. Staff mark it **Received**, **Sent to insurer** or **Settled**, with a note.
+   - Every change shows in Activities.
+
+**Photos and the free storage:**
+- An order with photos uses 2 saves (the order line plus the photo file). A claim with photos also uses 2.
+- After 1,500 saves in a month, photos are switched off until next month, so policies keep working. Customers are then asked to send photos on WhatsApp, and orders and claims still go through.
+- Photos are private: only signed-in staff can see them. 1 GB holds roughly 3,000 orders' worth of photos.
+
+## Push v23 from VS Code
+In the VS Code terminal (the folder is already linked to GitHub):
+```
+cd ~/Downloads/risktech && git add -A && git status
+```
+Check the list, then:
+```
+git commit -m "v23 staff pages, photos, claims" && git push
+```
+If it asks for a password, paste your GitHub token (not your GitHub password). Nothing else to set up: Blob is already connected.
+
+---
+
+# v22: shared policy list, safety checks, 2-step login
 
 ## What changed in v22
 1. **Shared policy list.** Every policy is saved on the server, so anyone signed in on any computer or phone sees all policies, corrections and cancellations. Search, Refresh and "Show more" were added.
@@ -9,7 +55,7 @@
 6. **Plate check** that warns about likely mix-ups (0/O, 8/B, 1/I and so on), on the buy form and the staff page.
 7. **Terms and Refund Policy** page (/terms) and **Privacy Notice** (/privacy), plus a required tick box before paying. Both are linked in the footer.
 8. **NIN privacy notice** under the NIN box.
-9. **On/off switch for each cover** (staff page, "Website and security settings"). A paused cover shows "Paused for now" and cannot be ordered.
+9. **On/off switch for each cover** (now on the staff **Settings** page). A paused cover shows "Paused for now" and cannot be ordered.
 10. **2-step login**: the staff password plus a 6-digit code from Google Authenticator or Microsoft Authenticator.
 11. **Auto sign-out** after 30 minutes with no activity, and always after 8 hours.
 12. **Email alerts** for policies issued, corrections, cancellations and sign-ins.
@@ -77,7 +123,7 @@ Alerts never include the NIN. If ALERT_EMAIL_PERSONAL is not set, everything goe
 
 ## Step 4: 2-step login (do this after Step 1)
 1. On the phone, install **Google Authenticator** or **Microsoft Authenticator**.
-2. On the staff page, go to Website and security settings and press **Set up 2-step login**. Scan the QR code, then type the 6-digit code and press **Check code**.
+2. On the staff page, open **Settings** and press **Set up 2-step login**. Scan the QR code, then type the 6-digit code and press **Check code**.
 3. When it says "The code works", press **Copy the key**. In Vercel, add `ADMIN_TOTP_SECRET` (Secret, Production) with that key as its value, then Redeploy.
 4. From now on, sign in with the password plus the code from the app. Everyone is signed out once, when it is switched on.
 5. **Save the key in a password manager** (for example the iPhone Passwords app). If the phone is lost, or a new staff member needs access, they add the same key in their authenticator app with "Enter a setup key".
@@ -116,4 +162,4 @@ Alerts never include the NIN. If ALERT_EMAIL_PERSONAL is not set, everything goe
 - A manager password before cancelling.
 - Renewal reminders.
 - Online payment (Paystack or Monnify).
-- Photo and document uploads (buy form and claims) and a staff Claims section.
+- Auto-deleting old photos after a set time (not built: say how long to keep them).

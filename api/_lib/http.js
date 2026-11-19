@@ -2,16 +2,18 @@ export function json(res, status, body) {
   res.status(status).setHeader('Cache-Control', 'no-store').json(body);
 }
 
-const MAX_BODY = 20_000; // an order is about 1 KB; anything huge is refused
+export const MAX_BODY = 20_000; // an order is about 1 KB; anything huge is refused
+export const MAX_PHOTO_BODY = 4_200_000; // forms with photos (Vercel's own limit is about 4.5 MB)
 
-export function readBody(req) {
+// Returns the parsed body, or null if it is not valid JSON or larger than max
+export function readBody(req, max = MAX_BODY) {
   let b = req.body;
   if (typeof b === 'string') {
-    if (b.length > MAX_BODY) return null;
+    if (b.length > max) return null;
     try { b = JSON.parse(b || '{}'); } catch { return null; }
   }
   if (!b || typeof b !== 'object' || Array.isArray(b)) return b === undefined ? {} : null;
-  if (JSON.stringify(b).length > MAX_BODY) return null;
+  if (JSON.stringify(b).length > max) return null;
   return b;
 }
 

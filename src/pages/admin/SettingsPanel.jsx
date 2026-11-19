@@ -66,7 +66,7 @@ const SettingsPanel = ({ call, onSignedOut, onPausedChange }) => {
               );
             })}
           </div>
-          <p className="text-xs text-gray-500 mb-4">{s.storage ? "Pause a cover when NPF has no units for it. It takes up to a minute to show on the website." : "Switch on the shared storage first (SETUP.md) to use these switches."}</p>
+          <p className="text-xs text-gray-500 mb-4">{s.storage ? "Pause a cover when the insurer has no units for it. It takes up to a minute to show on the website." : "Switch on the shared storage first (SETUP.md) to use these switches."}</p>
 
           <p className="text-sm font-semibold text-gray-800 mb-2">Status</p>
           <ul className="space-y-1 text-sm mb-4">

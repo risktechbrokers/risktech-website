@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import emailjs from "@emailjs/browser";
+import PhotoPicker from "../components/PhotoPicker";
 import { ArrowLeft, Car, Bike, CheckCircle, AlertCircle, AlertTriangle, Copy, ChevronRight, ShieldCheck, Landmark, MessageCircle, User, Building2, Lock, PauseCircle, Pencil } from "lucide-react";
 import { api, naira, longDate, store, esc } from "../lib/api";
 import { PRODUCTS, BANK, STATES, LGAS, CONTACT_PHONE_DISPLAY, NPF_LOOKUP_URL, validateOrder, waLink, todayLagos, insuredName, maskNin, plateWarnings, addYearMinusDay } from "../../shared/motor.js";
@@ -85,7 +86,8 @@ Check the bank before issuing.</p>
 <table style="width:100%;border-collapse:collapse">
 ${row("Cover", p.label)}${row("Premium", naira(p.premium))}${row("Starts", longDate(o.start_date))}
 ${row(o.insured_type === "company" ? "Company" : "Policy holder", insuredName(o))}${row("NIN", maskNin(o.nin))}${row("Phone", o.phone)}${row("Email", o.email)}${row("Address", `${o.address}, ${o.lga}, ${o.state}`)}
-${row("Plate number", o.reg_no)}${row("Make / model", `${o.vehicle_make} ${o.vehicle_model}`)}${row("Body type", o.vehicle_type)}${row("Colour", o.vehicle_color)}${row("Year", o.year_of_make)}
+${row("Plate number", o.reg_no)}${row("Make / model", `${o.vehicle_make} ${o.vehicle_model}${o.vehicle_make_id ? "" : " (NOT on the insurer's list: check before issuing)"}`)}${row("Body type", o.vehicle_type)}${row("Colour", o.vehicle_color)}${row("Year", o.year_of_make)}
+${row("Photos", o.photos ? `${o.photos} (open the staff page to see them)` : "None saved: ask the customer on WhatsApp")}
 </table></div>`;
 }
 
@@ -96,7 +98,7 @@ const emptyForm = (product = "private_motor") => ({
   vehicle_color: "", year_of_make: "", chassis_no: "", engine_no: "", engine_capacity: "", start_date: todayLagos(), website: "",
 });
 
-const PaymentStep = ({ order, emailed, staffLink }) => {
+const PaymentStep = ({ order, emailed, staffLink, photosNote }) => {
   const p = PRODUCTS[order.product];
   const name = insuredName(order);
   const proof = waLink(
@@ -139,7 +141,7 @@ const PaymentStep = ({ order, emailed, staffLink }) => {
 
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
         <h3 className="text-xl font-bold text-gray-900 mb-1">Step 2: Send us your receipt</h3>
-        <p className="text-gray-500 text-sm mb-5">After paying, send the transfer receipt on WhatsApp. The message is already written for you.</p>
+        <p className="text-gray-500 text-sm mb-5">After paying, send the transfer receipt on WhatsApp. The message is already written for you.{photosNote ? " Please also send your vehicle photos there: we could not save them on the website." : ""}</p>
         <a href={proof} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white font-bold py-4 rounded-xl">
           <MessageCircle size={18} /> I have paid: send receipt on WhatsApp
         </a>
@@ -161,7 +163,7 @@ const ReviewRow = ({ k, v }) => (
     <span className="text-gray-500">{k}</span><span className="text-gray-900 font-medium text-right break-words min-w-0">{v || "-"}</span>
   </div>
 );
-const ReviewStep = ({ form, prod, plateWarn, agreed, setAgreed, error, loading, onBack, onConfirm }) => (
+const ReviewStep = ({ form, prod, plateWarn, agreed, setAgreed, error, loading, onBack, onConfirm, photos }) => (
   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6" data-testid="review">
     <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 text-center">
       <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Plate number</p>
@@ -186,13 +188,19 @@ const ReviewStep = ({ form, prod, plateWarn, agreed, setAgreed, error, loading, 
     </div>
     <div>
       <p className="font-semibold text-gray-900 mb-1">Vehicle</p>
-      <ReviewRow k="Make / model" v={`${form.vehicle_make} ${form.vehicle_model}`.trim()} />
+      <ReviewRow k="Make / model" v={`${form.vehicle_make} ${form.vehicle_model}`.trim() + (form.vehicle_make_id ? "" : " (not on the list: we will confirm it with you)")} />
       <ReviewRow k="Body type" v={form.vehicle_type} />
       <ReviewRow k="Colour" v={form.vehicle_color} />
       <ReviewRow k="Year" v={form.year_of_make} />
       <ReviewRow k="Chassis number" v={form.chassis_no} />
       <ReviewRow k="Engine number" v={form.engine_no} />
     </div>
+    {photos.length > 0 && (
+      <div>
+        <p className="font-semibold text-gray-900 mb-2">Photos</p>
+        <div className="flex flex-wrap gap-2">{photos.map((p) => <img key={p.id} src={p.data} alt="" className="w-20 h-20 rounded-lg object-cover border border-gray-200" />)}</div>
+      </div>
+    )}
     <label className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 cursor-pointer">
       <input type="checkbox" className="mt-1 w-4 h-4 flex-shrink-0" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="agree" />
       <span>I confirm these details are correct and match my vehicle papers and ID. I agree to the{" "}
@@ -222,6 +230,11 @@ const BuyPage = ({ navigate }) => {
   const [paused, setPaused] = useState({});
   const [review, setReview] = useState(false); // "Check your details" screen
   const [agreed, setAgreed] = useState(false);
+  const [uploads, setUploads] = useState(false); // can photos be saved right now?
+  const [photos, setPhotos] = useState([]); // [{ id, slot, data }]
+  const [photosNote, setPhotosNote] = useState(false);
+  const [otherMake, setOtherMake] = useState(false); // "My make isn't listed"
+  const [otherModel, setOtherModel] = useState(false);
 
   // Asked once per visit even when the lists are cached, so a paused cover shows straight away
   useEffect(() => {
@@ -230,6 +243,7 @@ const BuyPage = ({ navigate }) => {
       .then((r) => {
         if (!live) return;
         setPaused(r.paused || {});
+        setUploads(!!r.uploads);
         if (r.available) { setLists(r); try { sessionStorage.setItem(LIST_KEY, JSON.stringify(r)); } catch { /* ignore */ } }
       })
       .catch(() => { /* typed fallback below; the server still refuses paused covers */ })
@@ -241,7 +255,10 @@ const BuyPage = ({ navigate }) => {
   // Typing in a box clears that box's error, so old red messages never sit under filled-in fields
   const clearErr = (...ks) => { setErrors((e) => { if (!ks.some((k) => e[k])) return e; const n = { ...e }; ks.forEach((k) => delete n[k]); if (!Object.keys(n).length) setError(""); return n; }); };
   const set = (k, v) => { setForm((p) => ({ ...p, [k]: v })); clearErr(k); };
-  const pick = (product) => setForm((p) => ({ ...p, product, vehicle_make_id: "", vehicle_make: "", vehicle_model_id: "", vehicle_model: "" }));
+  const pick = (product) => { setOtherMake(false); setOtherModel(false); setForm((p) => ({ ...p, product, vehicle_make_id: "", vehicle_make: "", vehicle_model_id: "", vehicle_model: "" })); };
+  const addPhotos = (slot) => (list) => { setPhotos((p) => [...p, ...list.map((data) => ({ id: `${Date.now()}-${Math.random()}`, slot, data }))]); clearErr("photo_plate"); };
+  const removePhoto = (id) => setPhotos((p) => p.filter((x) => x.id !== id));
+  const slotPhotos = (slot) => photos.filter((x) => x.slot === slot);
   const cls = (k) => input + (errors[k] ? " border-red-400" : " border-gray-200");
   const moto = form.product === "motorcycle";
   const isPaused = !!paused[form.product];
@@ -257,8 +274,18 @@ const BuyPage = ({ navigate }) => {
   const models = useMemo(() => (makes.find((m) => String(m.id) === String(form.vehicle_make_id))?.models || []), [makes, form.vehicle_make_id]);
   const bodies = lists?.body_types || [];
 
-  const chooseMake = (idv) => { clearErr("vehicle_make_id"); const m = makes.find((x) => String(x.id) === idv); setForm((p) => ({ ...p, vehicle_make_id: idv, vehicle_make: m?.name || "", vehicle_model_id: "", vehicle_model: "" })); };
-  const chooseModel = (idv) => { clearErr("vehicle_model_id"); const m = models.find((x) => String(x.id) === idv); setForm((p) => ({ ...p, vehicle_model_id: idv, vehicle_model: m?.name || "" })); };
+  const chooseMake = (idv) => {
+    clearErr("vehicle_make_id"); setOtherModel(false);
+    if (idv === "__other") { setOtherMake(true); setForm((p) => ({ ...p, vehicle_make_id: "", vehicle_make: "", vehicle_model_id: "", vehicle_model: "" })); return; }
+    setOtherMake(false);
+    const m = makes.find((x) => String(x.id) === idv); setForm((p) => ({ ...p, vehicle_make_id: idv, vehicle_make: m?.name || "", vehicle_model_id: "", vehicle_model: "" }));
+  };
+  const chooseModel = (idv) => {
+    clearErr("vehicle_model_id");
+    if (idv === "__other") { setOtherModel(true); setForm((p) => ({ ...p, vehicle_model_id: "", vehicle_model: "" })); return; }
+    setOtherModel(false);
+    const m = models.find((x) => String(x.id) === idv); setForm((p) => ({ ...p, vehicle_model_id: idv, vehicle_model: m?.name || "" }));
+  };
   const chooseBody = (idv) => { clearErr("body_type_id"); const b = bodies.find((x) => String(x.id) === idv); setForm((p) => ({ ...p, body_type_id: idv, vehicle_type: b?.name || "" })); };
 
   const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
@@ -270,7 +297,10 @@ const BuyPage = ({ navigate }) => {
     setError(""); setErrors({});
     if (isPaused) { setError(`${prod.short} cover is paused online right now. Please WhatsApp us on ${CONTACT_PHONE_DISPLAY}.`); return; }
     const v = validateOrder(form);
-    if (!v.ok) { setErrors(v.errors); setError("Please correct the highlighted fields."); return; }
+    const errs = { ...v.errors };
+    if (otherMake && !form.vehicle_make.trim()) errs.vehicle_make_id = "Type the make.";
+    if (uploads && !slotPhotos("plate").length) errs.photo_plate = "Add a photo that shows the plate number clearly.";
+    if (Object.keys(errs).length) { setErrors(errs); setError("Please correct the highlighted fields."); return; }
     setAgreed(false); setReview(true); toTop();
   };
   const backToForm = () => { setReview(false); setError(""); };
@@ -284,12 +314,15 @@ const BuyPage = ({ navigate }) => {
     setLoading(true);
     let o; let lock;
     try {
-      const r = await api("/api/admin", { method: "POST", body: { action: "order", order: form, confirmed: true } });
+      const sendPhotos = uploads ? photos.map(({ slot, data }) => ({ slot, data })) : [];
+      const r = await api("/api/admin", { method: "POST", body: { action: "order", order: form, confirmed: true, photos: sendPhotos } });
       o = r.order; lock = r.lock;
+      setPhotosNote(sendPhotos.length > 0 && !r.photosSaved);
     } catch (x) {
       setLoading(false);
       if (x.status === 400 && x.fields) { setErrors(x.fields); setReview(false); setError("Please correct the highlighted fields."); return; }
       if (x.status === 409) { setPaused((p) => ({ ...p, [form.product]: true })); setReview(false); }
+      if (x.status === 413) { setReview(false); }
       setError(x.status ? x.message : "We could not reach our server. Check your internet and try again, or WhatsApp us on " + CONTACT_PHONE_DISPLAY + ".");
       return;
     }
@@ -328,12 +361,12 @@ const BuyPage = ({ navigate }) => {
       <div className="max-w-3xl mx-auto px-4 py-10">
         {order ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <PaymentStep order={order} emailed={emailed} staffLink={staffLink} />
-            <button onClick={() => { setOrder(null); setForm(emptyForm()); setAgreed(false); }} className="block mx-auto mt-6 text-blue-700 text-sm font-semibold hover:underline">Buy cover for another vehicle</button>
+            <PaymentStep order={order} emailed={emailed} staffLink={staffLink} photosNote={photosNote} />
+            <button onClick={() => { setOrder(null); setForm(emptyForm()); setAgreed(false); setPhotos([]); setPhotosNote(false); setOtherMake(false); setOtherModel(false); }} className="block mx-auto mt-6 text-blue-700 text-sm font-semibold hover:underline">Buy cover for another vehicle</button>
           </motion.div>
         ) : review ? (
           <ReviewStep form={form} prod={prod} plateWarn={plateWarn} agreed={agreed} setAgreed={(v) => { setAgreed(v); if (v) setError(""); }}
-            error={error} loading={loading} onBack={backToForm} onConfirm={confirmOrder} />
+            error={error} loading={loading} onBack={backToForm} onConfirm={confirmOrder} photos={uploads ? photos : []} />
         ) : (
           <form onSubmit={submit} noValidate className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-8">
             <div style={{ display: "none" }} aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} /></div>
@@ -416,11 +449,19 @@ const BuyPage = ({ navigate }) => {
                 <Field label="Year of make" error={errors.year_of_make}><input inputMode="numeric" className={cls("year_of_make")} value={form.year_of_make} onChange={(e) => set("year_of_make", e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="e.g. 2014" /></Field>
                 {lists ? (
                   <>
-                    <Field label="Make" error={errors.vehicle_make_id}>
-                      <select className={cls("vehicle_make_id")} value={form.vehicle_make_id} onChange={(e) => chooseMake(e.target.value)} data-testid="make"><option value="">Select make</option>{makes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
+                    <Field label="Make" error={errors.vehicle_make_id} hint={otherMake ? "We will confirm the make with you before issuing." : null}>
+                      <select className={cls("vehicle_make_id")} value={otherMake ? "__other" : form.vehicle_make_id} onChange={(e) => chooseMake(e.target.value)} data-testid="make"><option value="">Select make</option>{makes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}<option value="__other">My make isn't listed</option></select>
+                      {otherMake && <input className={cls("vehicle_make_id") + " mt-2"} value={form.vehicle_make} onChange={(e) => { set("vehicle_make", e.target.value); clearErr("vehicle_make_id"); }} maxLength={60} placeholder={moto ? "Type the make, e.g. Spiro" : "Type the make"} data-testid="make-other" autoFocus />}
                     </Field>
                     <Field label="Model (optional)" error={errors.vehicle_model_id}>
-                      <select className={cls("vehicle_model_id")} value={form.vehicle_model_id} disabled={!models.length} onChange={(e) => chooseModel(e.target.value)}><option value="">{form.vehicle_make_id ? (models.length ? "Select model" : "No models listed") : "Select make first"}</option>{models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
+                      {otherMake ? (
+                        <input className={cls("vehicle_model")} value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} maxLength={60} placeholder="Type the model" data-testid="model-other" />
+                      ) : (
+                        <>
+                          <select className={cls("vehicle_model_id")} value={otherModel ? "__other" : form.vehicle_model_id} disabled={!form.vehicle_make_id} onChange={(e) => chooseModel(e.target.value)}><option value="">{form.vehicle_make_id ? (models.length ? "Select model" : "No models listed") : "Select make first"}</option>{models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}{form.vehicle_make_id && <option value="__other">My model isn't listed</option>}</select>
+                          {otherModel && <input className={cls("vehicle_model") + " mt-2"} value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} maxLength={60} placeholder="Type the model" data-testid="model-other" />}
+                        </>
+                      )}
                     </Field>
                     <Field label="Body type" error={errors.body_type_id}>
                       <select className={cls("body_type_id")} value={form.body_type_id} onChange={(e) => chooseBody(e.target.value)} data-testid="body"><option value="">Select body type</option>{bodies.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
@@ -439,6 +480,18 @@ const BuyPage = ({ navigate }) => {
                 <Field label="Engine capacity (optional)" error={errors.engine_capacity} hint={moto ? "In cc, e.g. 150" : "In litres, e.g. 1.6"}><input className={cls("engine_capacity")} value={form.engine_capacity} onChange={(e) => set("engine_capacity", e.target.value)} maxLength={10} /></Field>
               </div>
             </div>
+
+            {uploads && (
+              <div data-testid="photos-section">
+                <p className="text-base font-semibold text-gray-900 mb-1">4. Photos</p>
+                <p className="text-gray-500 text-xs mb-3">They help us get every detail on your certificate right. Only RiskTech staff can see them.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <PhotoPicker label="Vehicle showing the plate number" required max={1} photos={slotPhotos("plate")} onAdd={addPhotos("plate")} onRemove={removePhoto} error={errors.photo_plate} testId="photo-plate" hint="The whole plate must be clear." />
+                  <PhotoPicker label="Vehicle papers" max={1} photos={slotPhotos("papers")} onAdd={addPhotos("papers")} onRemove={removePhoto} testId="photo-papers" hint="Registration papers" />
+                  <PhotoPicker label="Chassis number" max={1} photos={slotPhotos("chassis")} onAdd={addPhotos("chassis")} onRemove={removePhoto} testId="photo-chassis" />
+                </div>
+              </div>
+            )}
 
             {error && <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm"><AlertCircle size={18} className="mt-0.5 flex-shrink-0" />{error}</div>}
 

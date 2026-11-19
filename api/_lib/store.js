@@ -3,6 +3,7 @@
 // this server can read or write them.
 //   rt/policies.json   every policy issued from any device (no full NIN, only the last 4 digits)
 //   rt/settings.json   website switches (e.g. a product paused)
+//   rt/files/*.json    customers' photos: one file per order or claim (so each costs only one save)
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 
 // Tests swap in an in-memory store; on Vercel this is never set.
@@ -71,7 +72,7 @@ const YEAR_MS = 365 * 24 * 3600 * 1000;
 const month = () => new Date().toISOString().slice(0, 7);
 const savesThisMonth = (d) => (d?.writes?.month === month() ? Number(d.writes.count) || 0 : 0);
 
-const KINDS = ['login', 'login-failed', 'logout', 'order', 'issued', 'not-issued', 'no-answer', 'corrected', 'cancelled', 'download', 'setting', 'security', 'import', 'storage'];
+const KINDS = ['login', 'login-failed', 'logout', 'order', 'issued', 'not-issued', 'no-answer', 'corrected', 'cancelled', 'download', 'setting', 'security', 'import', 'storage', 'claim'];
 const short = (v, n) => String(v ?? '').replace(/[<>`]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
 function cleanEvent(e) {
   return {
@@ -98,7 +99,7 @@ function stamp(d, events = [], extraSaves = 0) {
 // Only these fields are ever stored. The full NIN is never stored.
 const FIELDS = ['key', 'at', 'reference', 'product', 'premium', 'name', 'insured_type', 'firstname', 'lastname', 'nin_masked', 'phone', 'email',
   'address', 'reg_no', 'chassis_no', 'engine_no', 'vehicle_color', 'vehicle_type', 'body_type_id', 'start_date', 'end_date',
-  'policy_id', 'policy_number', 'certificate_no', 'status', 'message', 'history'];
+  'policy_id', 'policy_number', 'certificate_no', 'status', 'message', 'history', 'insurer', 'photos'];
 const clean = (r) => {
   const o = {};
   for (const k of FIELDS) if (r[k] !== undefined) o[k] = r[k];
@@ -180,6 +181,60 @@ export async function importPolicies(records, events = () => []) {
     return stamp({ ...d, policies: list.slice(0, 5000) }, events(added));
   });
   return added;
+}
+
+// ---------- Customers' photos ----------
+// Photos are only saved while the month still has saves to spare, so they can never block policies.
+let filesCache = null; // { at, ok } kept 5 minutes, so the buy page doesn't read storage on every visit
+export async function filesAllowed({ fresh = false } = {}) {
+  if (!storeEnabled()) return false;
+  if (!fresh && filesCache && Date.now() - filesCache.at < 5 * 60_000) return filesCache.ok;
+  try { const { data } = await readJson(POLICIES, EMPTY); filesCache = { at: Date.now(), ok: savesThisMonth(data) < SOFT_LIMIT }; }
+  catch { filesCache = { at: Date.now(), ok: false }; }
+  return filesCache.ok;
+}
+export const _resetFilesCache = () => { filesCache = null; };
+export const filePath = (kind, id) => `rt/files/${kind}-${id}.json`;
+export async function saveFile(kind, id, bundle) {
+  await writeRaw(filePath(kind, id), JSON.stringify(bundle)); // new file, never overwritten
+}
+export async function readFile(kind, id) {
+  const { data } = await readJson(filePath(kind, id), null);
+  return data;
+}
+
+// ---------- Claims (in the main file, so a claim and its history line are one save) ----------
+const CLAIM_FIELDS = ['id', 'at', 'name', 'phone', 'email', 'policy_number', 'insurance_type', 'incident_date', 'incident_location',
+  'description', 'estimated_loss', 'photos', 'status', 'history'];
+const cleanClaim = (r) => { const o = {}; for (const k of CLAIM_FIELDS) if (r[k] !== undefined) o[k] = r[k]; if (Array.isArray(o.history)) o.history = o.history.slice(-30); return o; };
+
+export async function listClaims() {
+  const { data } = await readJson(POLICIES, EMPTY);
+  return Array.isArray(data?.claims) ? data.claims : [];
+}
+
+// extraSaves: the photo file saved just before, counted in the same month total
+export async function addClaim(record, events = [], extraSaves = 0) {
+  const r = cleanClaim(record);
+  return updateJson(POLICIES, EMPTY, (d) => {
+    const list = Array.isArray(d.claims) ? d.claims : [];
+    if (list.some((c) => c.id === r.id)) return null;
+    return stamp({ ...d, claims: [r, ...list].slice(0, 3000) }, events, extraSaves);
+  });
+}
+
+export async function patchClaim(id, patch, note, events = () => []) {
+  let found = null;
+  await updateJson(POLICIES, EMPTY, (d) => {
+    const list = Array.isArray(d.claims) ? d.claims : [];
+    const i = list.findIndex((c) => c.id === id);
+    if (i < 0) { found = null; return null; }
+    const history = [...(list[i].history || []), { at: new Date().toISOString(), note }].slice(-30);
+    list[i] = cleanClaim({ ...list[i], ...patch, history });
+    found = list[i];
+    return stamp({ ...d, claims: list }, events(found));
+  });
+  return found;
 }
 
 // ---------- Settings (product on/off) ----------

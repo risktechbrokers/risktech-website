@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import { FileDown, Copy, Download, MessageCircle, Loader2, Pencil, XCircle, Search, CloudUpload, Info, RefreshCw } from "lucide-react";
 import { naira } from "../../lib/api";
 import { maskNin } from "../../../shared/motor.js";
-import { input, COLS, toRow, downloadCsv, waCustomer } from "./common";
+import { input, COLS, toRow, downloadCsv, waCustomer, insurerOf } from "./common";
+import PhotoViewer from "./PhotoViewer";
 
-// Correct details or cancel a policy NPF issued
+// Correct details or cancel a policy the insurer issued
 const PolicyActions = ({ entry, call, onDone, onSignedOut, lists }) => {
   const [mode, setMode] = useState("");
   const [reason, setReason] = useState("");
@@ -27,13 +28,13 @@ const PolicyActions = ({ entry, call, onDone, onSignedOut, lists }) => {
       for (const [k, , cur] of fields) if (ch[k] !== undefined && String(ch[k]).trim() && String(ch[k]).trim() !== String(cur ?? "")) changes[k] = String(ch[k]).trim();
       if (ch.body_type_id && String(ch.body_type_id) !== String(entry.body_type_id)) changes.body_type_id = Number(ch.body_type_id);
       if (!Object.keys(changes).length) { setMsg({ ok: false, text: "Change at least one field." }); return; }
-      if (!window.confirm(`Send these corrections to NPF for ${entry.policy_number}?\n${Object.keys(changes).join(", ")}`)) return;
-    } else if (!window.confirm(`Cancel ${entry.policy_number} for ${entry.name} at NPF? This cannot be undone, and NPF does not refund the unit automatically.`)) return;
+      if (!window.confirm(`Send these corrections to the insurer (${insurerOf(entry)}) for ${entry.policy_number}?\n${Object.keys(changes).join(", ")}`)) return;
+    } else if (!window.confirm(`Cancel ${entry.policy_number} for ${entry.name} at the insurer (${insurerOf(entry)})? This cannot be undone, and the unit is not refunded automatically.`)) return;
     setBusy(true);
     try {
       const r = await call({ action: mode, policy_id: entry.policy_id, reason, changes });
       if (r.ok) {
-        setMsg({ ok: true, text: mode === "cancel" ? "Policy cancelled at NPF." : `NPF saved the correction (${(r.fields_changed || []).join(", ") || "no change needed"}). Download the certificate again for the customer.` });
+        setMsg({ ok: true, text: mode === "cancel" ? "Policy cancelled at the insurer." : `The insurer saved the correction (${(r.fields_changed || []).join(", ") || "no change needed"}). Download the certificate again for the customer.` });
         onDone(mode === "cancel" ? { status: "CANCELLED", message: `Cancelled: ${reason}` } : {
           ...(changes.plate_number ? { reg_no: changes.plate_number } : {}), ...(changes.mobile_no ? { phone: changes.mobile_no } : {}),
           ...(changes.firstname || changes.lastname ? { firstname: changes.firstname || entry.firstname, lastname: changes.lastname || entry.lastname, name: `${changes.firstname || entry.firstname} ${changes.lastname || entry.lastname}` } : {}),
@@ -43,7 +44,7 @@ const PolicyActions = ({ entry, call, onDone, onSignedOut, lists }) => {
           ...(changes.vehicle_color ? { vehicle_color: changes.vehicle_color } : {}), message: `Corrected: ${reason}`,
         });
         setMode(""); setReason(""); setCh({});
-      } else setMsg({ ok: false, text: `NPF said: ${r.message}` });
+      } else setMsg({ ok: false, text: `The insurer said: ${r.message}` });
     } catch (x) { if (x.status === 401) onSignedOut(); else setMsg({ ok: false, text: x.status ? x.message : "No internet connection. It is safe to try again." }); }
     finally { setBusy(false); }
   };
@@ -65,7 +66,7 @@ const PolicyActions = ({ entry, call, onDone, onSignedOut, lists }) => {
                     {k === "plate_number" && (
                       <p className="flex items-start gap-1 text-[11px] text-amber-800 mt-1" data-testid="plate-note">
                         <Info size={12} className="mt-0.5 flex-shrink-0" />
-                        <span>NPF currently only allows plate changes from their side. If NPF refuses, send the policy number ({entry.policy_number}) and the correct plate to Aliyu.</span>
+                        <span>The insurer (NPF) currently only allows plate changes from their side. If they refuse, send the policy number ({entry.policy_number}) and the correct plate to Aliyu.</span>
                       </p>
                     )}
                   </div>
@@ -82,7 +83,7 @@ const PolicyActions = ({ entry, call, onDone, onSignedOut, lists }) => {
           <div><label className="block text-[11px] font-semibold text-gray-600">{mode === "cancel" ? "Why is it being cancelled?" : "Why is it being changed?"}</label>
             <input className={input + " border-gray-300"} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder={mode === "cancel" ? "e.g. Customer sold the vehicle" : "e.g. Plate number was entered incorrectly"} /></div>
           <button disabled={busy} onClick={run} className={`flex items-center gap-1.5 text-sm font-semibold text-white rounded-lg px-3 py-2 disabled:opacity-60 ${mode === "cancel" ? "bg-red-600" : "bg-blue-700"}`}>
-            {busy && <Loader2 size={14} className="animate-spin" />}{mode === "cancel" ? "Cancel at NPF" : "Send correction to NPF"}
+            {busy && <Loader2 size={14} className="animate-spin" />}{mode === "cancel" ? "Cancel at the insurer" : "Send correction to the insurer"}
           </button>
         </div>
       )}
@@ -133,7 +134,7 @@ const PolicyList = ({ policies, sharedOn, sharedErr, loading, localOnly, onImpor
           <input value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} placeholder="Search name, plate, policy number, reference or phone" className={input + " border-gray-300 pl-9"} data-testid="policy-search" />
         </div>
       )}
-      {!policies.length && <p className="text-gray-500 text-sm">{loading ? "Loading..." : "Nothing yet. Each policy NPF issues appears here."}</p>}
+      {!policies.length && <p className="text-gray-500 text-sm">{loading ? "Loading..." : "Nothing yet. Each policy the insurer issues appears here."}</p>}
       {policies.length > 0 && !filtered.length && <p className="text-gray-500 text-sm">No policy matches "{q}".</p>}
 
       <div className="space-y-2">
@@ -143,7 +144,7 @@ const PolicyList = ({ policies, sharedOn, sharedErr, loading, localOnly, onImpor
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 break-words">{e.policy_number || "(no policy number)"} &middot; {e.name} &middot; {e.reg_no}</p>
                 <p className="text-gray-500 text-xs break-words">
-                  {e.certificate_no ? `${e.certificate_no} · ` : ""}{naira(e.premium)} &middot; {e.at?.slice(0, 10)} &middot; <span className={`font-semibold ${STATUS_CLASS[e.status] || "text-amber-700"}`}>{e.status === "UNKNOWN" ? "NO ANSWER: ask NPF before sending again" : e.status}</span>{e.message ? ` (${e.message})` : ""}
+                  <span className="font-semibold text-gray-600" data-testid="row-insurer">{insurerOf(e)}</span> &middot; {e.certificate_no ? `${e.certificate_no} · ` : ""}{naira(e.premium)} &middot; {e.at?.slice(0, 10)} &middot; <span className={`font-semibold ${STATUS_CLASS[e.status] || "text-amber-700"}`}>{e.status === "UNKNOWN" ? "NO ANSWER: ask the insurer before sending again" : e.status}</span>{e.message ? ` (${e.message})` : ""}
                   {e._localOnly && <span className="ml-1 text-blue-700 font-semibold">· only on this device</span>}
                 </p>
               </div>
@@ -158,6 +159,7 @@ const PolicyList = ({ policies, sharedOn, sharedErr, loading, localOnly, onImpor
                 {e.status === "SUCCESS" && <a href={waCustomer(e)} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs bg-[#25D366] text-white rounded-lg px-2.5 py-1.5"><MessageCircle size={12} /> WhatsApp customer</a>}
               </div>
             </div>
+            {Number(e.photos) > 0 && /^RT-/.test(e.reference || "") && <div className="mt-2"><PhotoViewer call={call} kind="order" id={e.reference} count={e.photos} onSignedOut={onSignedOut} label="Customer's photos" /></div>}
             {e.status === "SUCCESS" && e.policy_id && (
               <div className="mt-2"><PolicyActions entry={e} call={call} lists={lists} onDone={(patch) => onPatched(e, patch)} onSignedOut={onSignedOut} /></div>
             )}

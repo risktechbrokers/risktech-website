@@ -1,4 +1,4 @@
-// Monthly report: policies issued, units used and an estimate of NPF's share, for settlement with NPF.
+// Monthly report: policies issued, units used and an estimate of the insurer's share, for settlement with the insurer.
 import { useMemo, useState } from "react";
 import { BarChart3, Download } from "lucide-react";
 import { naira, store } from "../../lib/api";
@@ -55,11 +55,11 @@ const MonthlyReport = ({ policies }) => {
         </div>
         <div className="sm:col-span-2 text-sm bg-gray-50 rounded-lg p-3">
           {pctOk ? (
-            <>RiskTech's commission: <b>{naira(commission)}</b><br />Estimated amount to pay NPF: <b data-testid="report-due">{naira(total.premium - commission)}</b></>
-          ) : <span className="text-gray-500">Enter RiskTech's commission % (from NPF) to see the estimated amount owed to NPF.</span>}
+            <>RiskTech's commission: <b>{naira(commission)}</b><br />Estimated amount to pay the insurer: <b data-testid="report-due">{naira(total.premium - commission)}</b></>
+          ) : <span className="text-gray-500">Enter RiskTech's commission % (from the insurer) to see the estimated amount owed to the insurer.</span>}
         </div>
       </div>
-      <p className="text-xs text-gray-500 mt-3">An estimate from the policies in this list. Always check it against NPF's own statement before paying. Units are not refunded automatically when a policy is cancelled, so cancelled policies still count as units used.</p>
+      <p className="text-xs text-gray-500 mt-3">An estimate from the policies in this list. Always check it against the insurer's own statement before paying. Units are not refunded automatically when a policy is cancelled, so cancelled policies still count as units used.</p>
       {rows.length > 0 && (
         <button onClick={() => downloadCsv([COLS, ...rows.map(toRow)], `risktech-motor-${month}.csv`)} className="flex items-center gap-1.5 text-sm font-semibold text-blue-700 mt-3"><Download size={15} /> Download {monthName(month)} as CSV</button>
       )}

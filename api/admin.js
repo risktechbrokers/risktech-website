@@ -15,16 +15,20 @@
 //   import-policies          one-time move of a device's own list into the shared list
 //   settings / set-product   website switches (pause a product)
 //   totp-setup / totp-check  set up 2-step login
+//   claim          (public)  a claim from the claim form, with photos
 //   activity                 history of everything done on the staff page and website orders
+//   claims / claim-status    the claims list and moving a claim along (Received, Sent to insurer, Settled)
+//   files                    the photos a customer sent with an order or a claim
 //   logout                   records a sign-out in the history
 import QRCode from 'qrcode';
-import { json, readBody, sameOrigin, clientIp, isLimited, addHit, rateLimit, wait } from './_lib/http.js';
+import { json, readBody, sameOrigin, clientIp, isLimited, addHit, rateLimit, wait, MAX_BODY, MAX_PHOTO_BODY } from './_lib/http.js';
+import { checkPhotos, ORDER_SLOTS, CLAIM_SLOTS } from './_lib/photos.js';
 import { checkPassword, issueToken, isAdmin, refreshToken, recentlySignedIn, verifyOrder, lockOrder, unlockOrder, signSetup, checkSetup } from './_lib/auth.js';
 import { getReference, publicLists, mapProducts, checkAgainstReference, issuePolicy, getDocument, endorsePolicy, cancelPolicy, checkConnection } from './_lib/npf.js';
-import { storeEnabled, listPolicies, savePolicy, patchPolicy, importPolicies, getSettings, setPaused, logActivity, listActivity } from './_lib/store.js';
+import { storeEnabled, listPolicies, savePolicy, patchPolicy, importPolicies, getSettings, setPaused, logActivity, listActivity, filesAllowed, saveFile, readFile, listClaims, addClaim, patchClaim } from './_lib/store.js';
 import { totpEnabled, verifyCode, newSecret, otpauthUrl } from './_lib/totp.js';
 import { sendAlert, alertsEnabled } from './_lib/alerts.js';
-import { validateOrder, newReference, addYearMinusDay, insuredName, maskNin, LGAS, PRODUCTS } from '../shared/motor.js';
+import { validateOrder, newReference, addYearMinusDay, insuredName, maskNin, LGAS, PRODUCTS, INSURER } from '../shared/motor.js';
 
 const MIN = 60_000;
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
@@ -108,15 +112,20 @@ export default async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'noindex');
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
   if (!sameOrigin(req)) return json(res, 403, { error: 'Not allowed.' });
-  const body = readBody(req);
-  if (!body) return json(res, 400, { error: 'Request not understood.' });
+  // Only the two forms that carry photos may send a large request
+  const body = readBody(req, MAX_PHOTO_BODY);
+  if (!body) {
+    const size = typeof req.body === 'string' ? req.body.length : JSON.stringify(req.body ?? '').length;
+    return size > MAX_PHOTO_BODY ? json(res, 413, { error: 'The photos are too large. Please remove one and try again.' }) : json(res, 400, { error: 'Request not understood.' });
+  }
+  if (body.action !== 'order' && body.action !== 'claim' && JSON.stringify(body).length > MAX_BODY) return json(res, 400, { error: 'Request not understood.' });
   const ip = clientIp(req);
 
   try {
     if (body.action === 'lists') {
       if (rateLimit(req, 'lists', 60, 10 * MIN)) return json(res, 429, { error: 'Too many requests. Please wait a minute.' });
-      const [ref, settings] = await Promise.all([getReference(), getSettings()]);
-      return json(res, 200, ref.ok ? { available: true, ...publicLists(ref.data), paused: settings.paused } : { available: false, paused: settings.paused });
+      const [ref, settings, uploads] = await Promise.all([getReference(), getSettings(), filesAllowed()]);
+      return json(res, 200, ref.ok ? { available: true, ...publicLists(ref.data), paused: settings.paused, uploads } : { available: false, paused: settings.paused, uploads });
     }
 
     if (body.action === 'order') {
@@ -126,14 +135,57 @@ export default async function handler(req, res) {
       if (body.confirmed !== true) return json(res, 400, { error: 'Please confirm that your details are correct and accept the terms.' });
       const { paused } = await getSettings();
       if (paused[v.value.product]) return json(res, 409, { error: `${PRODUCTS[v.value.product].short} cover is temporarily unavailable online. Please WhatsApp us.` });
-      const order = { ...v.value, reference: newReference(), created_at: new Date().toISOString(), confirmed_at: new Date().toISOString() };
+      const pics = checkPhotos(body.photos, { slots: ORDER_SLOTS, max: 3 });
+      if (!pics.ok) return json(res, 400, { error: pics.error });
+      const order = { ...v.value, reference: newReference(), created_at: new Date().toISOString(), confirmed_at: new Date().toISOString(), photos: 0 };
+      // Photos never stop an order: if they can't be saved, the customer is asked to WhatsApp them
+      let photosSaved = !pics.photos.length;
+      if (pics.photos.length && await filesAllowed({ fresh: true })) {
+        try { await saveFile('order', order.reference, { reference: order.reference, at: order.created_at, photos: pics.photos }); order.photos = pics.photos.length; photosSaved = true; }
+        catch (e) { console.error('photo save failed', e?.message || e); }
+      }
       const lock = lockOrder(order);
       if (!lock) return json(res, 500, { error: 'The website is not fully set up. Please WhatsApp us.' });
-      await log(ev(req, 'order', `New order ${order.reference} from the website: ${insuredName(order)}, ${order.reg_no}, ${PRODUCTS[order.product].short}`));
-      return json(res, 200, { order, lock });
+      const unlisted = !order.vehicle_make_id ? ` (make not on the insurer's list: ${order.vehicle_make})` : '';
+      await log(ev(req, 'order', `New order ${order.reference} from the website: ${insuredName(order)}, ${order.reg_no}, ${PRODUCTS[order.product].short}${order.photos ? `, ${order.photos} photo${order.photos > 1 ? 's' : ''}` : ''}${unlisted}`),
+        order.photos ? { optional: false, extraSaves: 1 } : undefined);
+      return json(res, 200, { order, lock, photosSaved });
+    }
+
+    if (body.action === 'claim') {
+      if (rateLimit(req, 'claim', 5, 10 * MIN)) return json(res, 429, { error: 'Too many claims from this connection. Please wait a few minutes or call us.' });
+      const c = body.claim || {};
+      const f = {
+        name: text(c.name, 100), phone: String(c.phone || '').replace(/[^\d+]/g, '').slice(0, 16), email: text(c.email, 120).toLowerCase(),
+        policy_number: text(c.policy_number, 60), insurance_type: text(c.insurance_type, 80), incident_date: text(c.incident_date, 10),
+        incident_location: text(c.incident_location, 200), description: text(c.description, 2000), estimated_loss: text(c.estimated_loss, 40),
+      };
+      const missing = ['name', 'phone', 'email', 'insurance_type', 'incident_date', 'incident_location', 'description'].filter((k) => !f[k]);
+      if (missing.length) return json(res, 400, { error: 'Please fill in all the required fields.' });
+      if (!/^\S+@\S+\.\S+$/.test(f.email)) return json(res, 400, { error: 'Enter a valid email address.' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f.incident_date)) return json(res, 400, { error: 'Enter the date of the incident.' });
+      const pics = checkPhotos(body.photos, { slots: CLAIM_SLOTS, max: 8 });
+      if (!pics.ok) return json(res, 400, { error: pics.error });
+      if (!storeEnabled()) return json(res, 200, { saved: false, photosSaved: false });
+      const id = newReference().replace(/^RT-/, 'CL-');
+      const at = new Date().toISOString();
+      let photos = 0; let photosSaved = !pics.photos.length;
+      if (pics.photos.length && await filesAllowed({ fresh: true })) {
+        try { await saveFile('claim', id, { id, at, photos: pics.photos }); photos = pics.photos.length; photosSaved = true; }
+        catch (e) { console.error('photo save failed', e?.message || e); }
+      }
+      const saved = await safely(() => addClaim({ id, at, ...f, photos, status: 'RECEIVED', history: [] },
+        [ev(req, 'claim', `New claim ${id}: ${f.name}, ${f.insurance_type}${f.policy_number ? `, policy ${f.policy_number}` : ''}${photos ? `, ${photos} photo${photos > 1 ? 's' : ''}` : ''}`)], photos ? 1 : 0));
+      return json(res, 200, { saved: saved.saved, id: saved.saved ? id : null, photosSaved: saved.saved && photosSaved });
     }
 
     if (body.action === 'login-info') return json(res, 200, { totp: totpEnabled() });
+
+    // Can the claim form save photos right now?
+    if (body.action === 'upload-info') {
+      if (rateLimit(req, 'upload-info', 60, 10 * MIN)) return json(res, 429, { error: 'Too many requests.' });
+      return json(res, 200, { uploads: await filesAllowed() });
+    }
 
     if (body.action === 'login') {
       // 5 wrong tries per connection, and 40 per 15 minutes in total, then a pause
@@ -197,7 +249,7 @@ export default async function handler(req, res) {
 
     if (body.action === 'staff-lists') {
       const ref = await getReference();
-      if (!ref.ok) return json(res, 502, { error: ref.message || 'Could not load NPF\'s lists.' });
+      if (!ref.ok) return json(res, 502, { error: ref.message || 'Could not load the insurer\'s lists.' });
       const map = mapProducts(ref.data);
       return json(res, 200, { ...publicLists(ref.data), mapping: Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v ? { product_name: v.product_name, vehicle_type: v.vehicle_type_name } : null])) });
     }
@@ -212,12 +264,12 @@ export default async function handler(req, res) {
         try {
           const prev = (await listPolicies()).find((p) => p.reference === reference && (p.status === 'SUCCESS' || p.status === 'UNKNOWN'));
           if (prev?.status === 'SUCCESS') return json(res, 409, { error: `Order ${reference} was already issued as ${prev.policy_number}. It cannot be sent twice.` });
-          if (prev?.status === 'UNKNOWN' && body.confirmed_not_created !== true) return json(res, 409, { error: `Order ${reference} was sent before and NPF did not answer. Confirm with NPF that it was NOT created before sending again.` });
+          if (prev?.status === 'UNKNOWN' && body.confirmed_not_created !== true) return json(res, 409, { error: `Order ${reference} was sent before and the insurer did not answer. Confirm with the insurer that it was NOT created before sending again.` });
         } catch (e) { console.error('store read failed', e?.message || e); }
       }
 
       const ref = await getReference();
-      if (!ref.ok) return json(res, 502, { error: `Could not load NPF's lists, so nothing was sent. ${ref.message || ''}`.trim() });
+      if (!ref.ok) return json(res, 502, { error: `Could not load the insurer's lists, so nothing was sent. ${ref.message || ''}`.trim() });
       const problem = checkAgainstReference(v.value, ref.data);
       if (problem) return json(res, 400, { error: problem.message, fields: { [problem.field]: problem.message } });
       const map = mapProducts(ref.data)[v.value.product];
@@ -230,8 +282,8 @@ export default async function handler(req, res) {
       const who = `${name}, ${o.reg_no}, ${PRODUCTS[o.product].short}${reference ? `, order ${reference}` : ', walk-in'}`;
       const issueEvent = ev(req, result.status === 'SUCCESS' ? 'issued' : result.status === 'UNKNOWN' ? 'no-answer' : 'not-issued',
         result.status === 'SUCCESS' ? `Policy issued: ${result.policy_number} (${who})`
-          : result.status === 'UNKNOWN' ? `Sent to NPF, NO ANSWER: ${who}. Ask NPF before sending again.${body.confirmed_not_created === true ? ' (Re-sent after NPF confirmed the first was not created.)' : ''}`
-            : `NPF did not issue (${result.httpStatus || result.status}): ${who}. NPF said: ${text(result.message, 120)}`);
+          : result.status === 'UNKNOWN' ? `Sent to ${INSURER.name}, NO ANSWER: ${who}. Ask the insurer before sending again.${body.confirmed_not_created === true ? ' (Re-sent after the insurer confirmed the first was not created.)' : ''}`
+            : `${INSURER.name} did not issue (${result.httpStatus || result.status}): ${who}. The insurer said: ${text(result.message, 120)}`);
       let shared = { saved: false, reason: 'not needed' };
       if (result.status !== 'SUCCESS' && result.status !== 'UNKNOWN') await log(issueEvent, { optional: false });
       if (result.status === 'SUCCESS' || result.status === 'UNKNOWN') {
@@ -242,8 +294,9 @@ export default async function handler(req, res) {
           engine_no: o.engine_no, vehicle_color: o.vehicle_color, vehicle_type: o.vehicle_type, body_type_id: o.body_type_id,
           start_date: o.start_date, end_date, policy_id: result.policy_id || null, policy_number: result.policy_number || '',
           certificate_no: result.certificate_no || '', status: result.status, message: result.message,
+          insurer: INSURER.name, photos: Math.min(3, Math.max(0, Number.parseInt(body.order?.photos, 10) || 0)),
         }, [issueEvent]));
-        await sendAlert('issued', result.status === 'SUCCESS' ? `Policy issued: ${result.policy_number}` : `NPF did not answer for ${o.reg_no}`, [
+        await sendAlert('issued', result.status === 'SUCCESS' ? `Policy issued: ${result.policy_number}` : `The insurer did not answer for ${o.reg_no}`, [
           ['Policy holder', name], ['Plate', o.reg_no], ['Cover', PRODUCTS[o.product].label], ['Premium', `N${PRODUCTS[o.product].premium.toLocaleString()}`],
           ['Policy number', result.policy_number || '(none)'], ['Order reference', reference || 'Walk-in'], ['Status', result.status],
         ]);
@@ -281,7 +334,7 @@ export default async function handler(req, res) {
         const fields = (r.fields_changed || []).length ? r.fields_changed : Object.keys(changes);
         const changedNames = Object.keys(changes).map((k) => FIELD_NAMES[k] || k.replace(/_/g, ' ')).join(', ');
         const rec = await safely(() => patchPolicy(id(body.policy_id), { ...recordPatch(changes), message: `Corrected: ${reason}` }, `Corrected (${fields.join(', ')}): ${reason}`,
-          (p) => [ev(req, 'corrected', `Correction saved at NPF: ${p ? `${p.policy_number} (${p.name}, ${p.reg_no})` : `policy ID ${id(body.policy_id)}`}. Changed: ${changedNames}. Reason: ${reason}`)]));
+          (p) => [ev(req, 'corrected', `Correction saved at ${INSURER.name}: ${p ? `${p.policy_number} (${p.name}, ${p.reg_no})` : `policy ID ${id(body.policy_id)}`}. Changed: ${changedNames}. Reason: ${reason}`)]));
         await sendAlert('corrected', `Policy corrected: ${rec.r?.policy_number || body.policy_id}`, [
           ['Policy', rec.r?.policy_number || String(body.policy_id)], ['Policy holder', rec.r?.name || ''], ['Changed', Object.keys(changes).filter((k) => k !== 'nin').join(', ') + (changes.nin ? ', NIN' : '')], ['Reason', reason],
         ]);
@@ -297,7 +350,7 @@ export default async function handler(req, res) {
       const r = await cancelPolicy(id(body.policy_id), reason);
       if (r.ok) {
         const rec = await safely(() => patchPolicy(id(body.policy_id), { status: 'CANCELLED', message: `Cancelled: ${reason}` }, `Cancelled: ${reason}`,
-          (p) => [ev(req, 'cancelled', `Policy CANCELLED at NPF: ${p ? `${p.policy_number} (${p.name}, ${p.reg_no})` : `policy ID ${id(body.policy_id)}`}. Reason: ${reason}`)]));
+          (p) => [ev(req, 'cancelled', `Policy CANCELLED at ${INSURER.name}: ${p ? `${p.policy_number} (${p.name}, ${p.reg_no})` : `policy ID ${id(body.policy_id)}`}. Reason: ${reason}`)]));
         await sendAlert('cancelled', `Policy CANCELLED: ${rec.r?.policy_number || body.policy_id}`, [
           ['Policy', rec.r?.policy_number || String(body.policy_id)], ['Policy holder', rec.r?.name || ''], ['Plate', rec.r?.reg_no || ''], ['Reason', reason],
         ]);
@@ -332,6 +385,30 @@ export default async function handler(req, res) {
       const s = await setPaused(body.product, body.paused === true);
       await log(ev(req, 'setting', `${PRODUCTS[body.product].short} ${body.paused === true ? 'PAUSED on the website (customers cannot buy it)' : 'switched back ON on the website'}`), { optional: false, extraSaves: 1 });
       return json(res, 200, { paused: s.paused });
+    }
+
+    if (body.action === 'claims') {
+      if (!storeEnabled()) return json(res, 200, { enabled: false, claims: [] });
+      return json(res, 200, { enabled: true, claims: await listClaims() });
+    }
+
+    if (body.action === 'claim-status') {
+      const STATUS = { RECEIVED: 'Received', SENT: 'Sent to insurer', SETTLED: 'Settled' };
+      const cid = text(body.id, 20);
+      const note = text(body.note, 300);
+      if (!/^CL-\d{6}-[0-9A-F]{6}$/.test(cid) || !own(STATUS, body.status)) return json(res, 400, { error: 'Unknown claim or status.' });
+      if (!storeEnabled()) return json(res, 400, { error: 'The shared storage is not switched on yet.' });
+      const c = await patchClaim(cid, { status: body.status }, `${STATUS[body.status]}${note ? `: ${note}` : ''}`,
+        (x) => [ev(req, 'claim', `Claim ${cid}${x ? ` (${x.name})` : ''} marked "${STATUS[body.status]}"${note ? `: ${note}` : ''}`)]);
+      return c ? json(res, 200, { claim: c }) : json(res, 404, { error: 'Claim not found. Press Refresh.' });
+    }
+
+    if (body.action === 'files') {
+      const okId = body.kind === 'order' ? /^RT-\d{6}-[0-9A-F]{6}$/.test(body.id) : body.kind === 'claim' ? /^CL-\d{6}-[0-9A-F]{6}$/.test(body.id) : false;
+      if (!okId) return json(res, 400, { error: 'Unknown order or claim.' });
+      if (!storeEnabled()) return json(res, 404, { error: 'No photos saved.' });
+      const f = await readFile(body.kind, body.id);
+      return f?.photos?.length ? json(res, 200, { photos: f.photos.map((p) => ({ label: p.label, data: p.data })) }) : json(res, 404, { error: 'No photos were saved for this one.' });
     }
 
     if (body.action === 'totp-setup') {
