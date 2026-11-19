@@ -1,13 +1,18 @@
 // Staff page: open an order (from the email link, or type in a walk-in sale), send it to NPF,
 // then download NPF's Certificate and Brown Card. Corrections and cancellations go through NPF too.
-// No database: this page keeps a log on this device; the office spreadsheet is the official record.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LogOut, FileDown, Send, AlertTriangle, CheckCircle, Copy, Download, MessageCircle, ClipboardPaste, Wifi, ShieldCheck, ShieldAlert, Loader2, Pencil, XCircle, Lock } from "lucide-react";
-import { api, naira, longDate, store } from "../lib/api";
-import { PRODUCTS, STATES, LGAS, NPF_LOOKUP_URL, decodeOrder, addYearMinusDay, todayLagos, validateOrder, insuredName, maskNin } from "../../shared/motor.js";
+// Every policy is saved to a shared list, so anyone signed in on any device sees all of them.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LogOut, FileDown, Send, AlertTriangle, CheckCircle, MessageCircle, ClipboardPaste, Wifi, ShieldCheck, ShieldAlert, Loader2, Lock, PauseCircle } from "lucide-react";
+import { api, naira, longDate } from "../lib/api";
+import { PRODUCTS, STATES, LGAS, decodeOrder, addYearMinusDay, todayLagos, validateOrder, insuredName, maskNin, plateWarnings } from "../../shared/motor.js";
+import { input, readLog, writeLog, waCustomer, samePolicy } from "./admin/common";
+import PolicyList from "./admin/PolicyList";
+import MonthlyReport from "./admin/MonthlyReport";
+import SettingsPanel from "./admin/SettingsPanel";
+import ActivityPanel from "./admin/ActivityPanel";
 
-const LOG_KEY = "rt_npf_log";
-const input = "w-full bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-700";
+const IDLE_MS = 30 * 60_000;     // sign out after 30 minutes with no activity
+const PING_EVERY_MS = 5 * 60_000; // while active, tell the server at most every 5 minutes
 
 const blank = () => ({
   product: "private_motor", insured_type: "personal", firstname: "", lastname: "", company_name: "", company_rc_number: "", nin: "",
@@ -15,12 +20,7 @@ const blank = () => ({
   reg_no: "", vehicle_make_id: "", vehicle_make: "", vehicle_model_id: "", vehicle_model: "", body_type_id: "", vehicle_type: "",
   vehicle_color: "", year_of_make: "", chassis_no: "", engine_no: "", engine_capacity: "", start_date: todayLagos(), reference: "",
 });
-
-const readLog = () => { try { const l = JSON.parse(store.get(LOG_KEY) || "[]"); return Array.isArray(l) ? l : []; } catch { return []; } };
-const writeLog = (l) => store.set(LOG_KEY, JSON.stringify(l.slice(0, 500)));
-
-const COLS = ["Date issued", "Reference", "Policy No", "Certificate No", "NPF policy ID", "Cover", "Premium", "Policy holder", "NIN (last 4)", "Phone", "Plate", "Start", "End", "NPF status", "NPF message"];
-const toRow = (e) => [e.at?.slice(0, 10), e.reference, e.policy_number, e.certificate_no, e.policy_id, PRODUCTS[e.product]?.short, e.premium, e.name, e.nin_masked, e.phone, e.reg_no, e.start_date, e.end_date, e.status, e.message];
+const noChecks = () => ({ paid: false, plate: false, identity: false });
 
 const STYLE = {
   SUCCESS: "bg-green-50 border-green-300 text-green-900",
@@ -39,94 +39,21 @@ const F = ({ label, k, o, set, errors, children, wide, locked, hint }) => (
   </div>
 );
 
-const waCustomer = (e) => {
-  const phone = "234" + String(e.phone).replace(/\D/g, "").replace(/^0/, "");
-  const text = `Hello ${e.name}, your payment is confirmed and NPF Insurance has issued your third party policy for ${e.reg_no}.\nPolicy number: ${e.policy_number}\nCertificate number: ${e.certificate_no}\nValid ${longDate(e.start_date)} to ${longDate(e.end_date)}.\nYour Certificate and Brown Card are attached. You can also download them any time at ${NPF_LOOKUP_URL} with your policy number, plate number and phone number.\nThank you for choosing RiskTech Insurance Brokers.`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-};
+const Check = ({ k, checks, setChecks, locked, children }) => (
+  <label className="flex items-start gap-2 text-sm text-gray-800">
+    <input type="checkbox" className="mt-1" checked={checks[k]} disabled={locked} onChange={(e) => setChecks((c) => ({ ...c, [k]: e.target.checked }))} data-testid={`check-${k}`} />
+    <span>{children}</span>
+  </label>
+);
 
-// Correct details or cancel a policy NPF issued
-const PolicyActions = ({ entry, token, onDone, onSignedOut, lists }) => {
-  const [mode, setMode] = useState("");
-  const [reason, setReason] = useState("");
-  const [ch, setCh] = useState({});
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const company = entry.insured_type === "company";
-  const fields = [
-    ...(company ? [["company_name", "Company name", entry.name]] : [["firstname", "First name", entry.firstname], ["lastname", "Last name", entry.lastname]]),
-    ["plate_number", "Plate number", entry.reg_no], ["mobile_no", "Phone", entry.phone], ["email", "Email", entry.email],
-    ["address", "Address", entry.address], ["chassis_number", "Chassis number", entry.chassis_no], ["engine_number", "Engine number", entry.engine_no],
-    ["vehicle_color", "Colour", entry.vehicle_color], ["nin", "NIN (only if changing)", ""],
-  ];
-  const run = async () => {
-    setMsg(null);
-    if (reason.trim().length < 5) { setMsg({ ok: false, text: "Write the reason first." }); return; }
-    const changes = {};
-    if (mode === "endorse") {
-      for (const [k, , cur] of fields) if (ch[k] !== undefined && String(ch[k]).trim() && String(ch[k]).trim() !== String(cur ?? "")) changes[k] = String(ch[k]).trim();
-      if (ch.body_type_id && String(ch.body_type_id) !== String(entry.body_type_id)) changes.body_type_id = Number(ch.body_type_id);
-      if (!Object.keys(changes).length) { setMsg({ ok: false, text: "Change at least one field." }); return; }
-      if (!window.confirm(`Send these corrections to NPF for ${entry.policy_number}?\n${Object.keys(changes).join(", ")}`)) return;
-    } else if (!window.confirm(`Cancel ${entry.policy_number} for ${entry.name} at NPF? This cannot be undone, and NPF does not refund the unit automatically.`)) return;
-    setBusy(true);
-    try {
-      const r = await api("/api/admin", { method: "POST", token, body: { action: mode, policy_id: entry.policy_id, reason, changes } });
-      if (r.ok) {
-        setMsg({ ok: true, text: mode === "cancel" ? "Policy cancelled at NPF." : `NPF saved the correction (${(r.fields_changed || []).join(", ") || "no change needed"}). Download the certificate again for the customer.` });
-        onDone(mode === "cancel" ? { status: "CANCELLED", message: `Cancelled: ${reason}` } : {
-          ...(changes.plate_number ? { reg_no: changes.plate_number } : {}), ...(changes.mobile_no ? { phone: changes.mobile_no } : {}),
-          ...(changes.firstname || changes.lastname ? { firstname: changes.firstname || entry.firstname, lastname: changes.lastname || entry.lastname, name: `${changes.firstname || entry.firstname} ${changes.lastname || entry.lastname}` } : {}),
-          ...(changes.company_name ? { name: changes.company_name } : {}), ...(changes.nin ? { nin_masked: maskNin(changes.nin) } : {}),
-          ...(changes.email ? { email: changes.email } : {}), ...(changes.address ? { address: changes.address } : {}),
-          ...(changes.chassis_number ? { chassis_no: changes.chassis_number } : {}), ...(changes.engine_number ? { engine_no: changes.engine_number } : {}),
-          ...(changes.vehicle_color ? { vehicle_color: changes.vehicle_color } : {}), message: `Corrected: ${reason}`,
-        });
-        setMode(""); setReason(""); setCh({});
-      } else setMsg({ ok: false, text: `NPF said: ${r.message}` });
-    } catch (x) { if (x.status === 401) onSignedOut(); else setMsg({ ok: false, text: x.status ? x.message : "No internet connection. It is safe to try again." }); }
-    finally { setBusy(false); }
-  };
-  return (
-    <div className="w-full">
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setMode(mode === "endorse" ? "" : "endorse")} className="flex items-center gap-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5"><Pencil size={12} /> Correct details</button>
-        <button onClick={() => setMode(mode === "cancel" ? "" : "cancel")} className="flex items-center gap-1 text-xs border border-red-300 text-red-700 rounded-lg px-2.5 py-1.5"><XCircle size={12} /> Cancel policy</button>
-      </div>
-      {mode && (
-        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-          {mode === "endorse" && (
-            <>
-              <p className="text-xs text-gray-600">Fill only what changes. The cover type cannot be changed: cancel and issue a new policy instead.</p>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {fields.map(([k, label, cur]) => (
-                  <div key={k}><label className="block text-[11px] font-semibold text-gray-600">{label}</label>
-                    <input className={input + " border-gray-300"} placeholder={cur ? String(cur) : ""} value={ch[k] ?? ""} onChange={(e) => setCh((p) => ({ ...p, [k]: e.target.value }))} /></div>
-                ))}
-                {lists && (
-                  <div><label className="block text-[11px] font-semibold text-gray-600">Body type</label>
-                    <select className={input + " border-gray-300"} value={ch.body_type_id ?? ""} onChange={(e) => setCh((p) => ({ ...p, body_type_id: e.target.value }))}>
-                      <option value="">{entry.vehicle_type || "No change"}</option>{lists.body_types.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select></div>
-                )}
-              </div>
-            </>
-          )}
-          <div><label className="block text-[11px] font-semibold text-gray-600">{mode === "cancel" ? "Why is it being cancelled?" : "Why is it being changed?"}</label>
-            <input className={input + " border-gray-300"} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder={mode === "cancel" ? "e.g. Customer sold the vehicle" : "e.g. Plate number was entered incorrectly"} /></div>
-          <button disabled={busy} onClick={run} className={`flex items-center gap-1.5 text-sm font-semibold text-white rounded-lg px-3 py-2 disabled:opacity-60 ${mode === "cancel" ? "bg-red-600" : "bg-blue-700"}`}>
-            {busy && <Loader2 size={14} className="animate-spin" />}{mode === "cancel" ? "Cancel at NPF" : "Send correction to NPF"}
-          </button>
-        </div>
-      )}
-      {msg && <p className={`text-xs mt-2 ${msg.ok ? "text-green-700" : "text-red-700"}`}>{msg.text}</p>}
-    </div>
-  );
-};
+const readSession = () => { try { return sessionStorage.getItem("rt_admin") || ""; } catch { return ""; } };
 
 const AdminPage = ({ navigate }) => {
-  const [token, setToken] = useState(() => { try { return sessionStorage.getItem("rt_admin") || ""; } catch { return ""; } });
+  const [token, setToken] = useState(readSession);
+  const tokenRef = useRef(token);
   const [pw, setPw] = useState("");
+  const [code, setCode] = useState("");
+  const [needsCode, setNeedsCode] = useState(false);
   const [err, setErr] = useState("");
   const [signingIn, setSigningIn] = useState(false);
 
@@ -144,49 +71,122 @@ const AdminPage = ({ navigate }) => {
   const [unknownOverride, setUnknownOverride] = useState(false);
   const [log, setLog] = useState(readLog);
   const [paste, setPaste] = useState("");
-  const [paid, setPaid] = useState(false);
+  const [checks, setChecks] = useState(noChecks);
   const [conn, setConn] = useState(null);
   const [lists, setLists] = useState(null);
   const [listErr, setListErr] = useState("");
+  const [shared, setShared] = useState(() => ({ on: false, list: [], err: "", loading: !!readSession() }));
+  const [importing, setImporting] = useState(false);
+  const [paused, setPausedState] = useState({});
 
-  function signOut(note) {
-    try { sessionStorage.removeItem("rt_admin"); } catch { /* ignore */ }
-    setToken("");
-    if (note) setErr(note);
-  }
+  // ---------- session ----------
+  const saveToken = useCallback((t) => {
+    tokenRef.current = t;
+    try { if (t) sessionStorage.setItem("rt_admin", t); else sessionStorage.removeItem("rt_admin"); } catch { /* ignore */ }
+    if (t) setShared((s) => ({ ...s, loading: true }));
+    setToken(t);
+  }, []);
+  const call = useCallback((body) => api("/api/admin", { method: "POST", token: tokenRef.current, body, onToken: (t) => { tokenRef.current = t; try { sessionStorage.setItem("rt_admin", t); } catch { /* ignore */ } } }), []);
+  // reason "manual" or "idle" records the sign-out in Activities; no reason = the server already ended the session
+  const signOut = useCallback((note, reason) => {
+    if (reason && tokenRef.current) call({ action: "logout", reason }).catch(() => { /* still sign out */ });
+    saveToken(""); if (note) setErr(note);
+  }, [saveToken, call]);
+  const onSignedOut = useCallback(() => signOut("You were signed out for safety. Please sign in again."), [signOut]);
+
+  // Is 2-step login on? (decides whether the sign-in form asks for a code)
+  useEffect(() => {
+    if (token) return;
+    let live = true;
+    api("/api/admin", { method: "POST", body: { action: "login-info" } }).then((r) => live && setNeedsCode(!!r.totp)).catch(() => { /* form still works */ });
+    return () => { live = false; };
+  }, [token]);
+
+  // Auto sign-out after 30 minutes with no activity; while active, keep the server session alive.
+  useEffect(() => {
+    if (!token) return;
+    let last = Date.now(); let lastPing = Date.now();
+    const active = () => {
+      last = Date.now();
+      if (Date.now() - lastPing > PING_EVERY_MS) { lastPing = Date.now(); call({ action: "ping" }).catch((x) => { if (x.status === 401) signOut("You were signed out for safety. Please sign in again."); }); }
+    };
+    const check = () => { if (Date.now() - last > IDLE_MS) signOut("Signed out after 30 minutes with no activity. Please sign in again.", "idle"); };
+    const events = ["pointerdown", "keydown", "scroll", "touchstart", "mousemove"];
+    events.forEach((e) => window.addEventListener(e, active, { passive: true }));
+    document.addEventListener("visibilitychange", check);
+    const t = setInterval(check, 20_000);
+    return () => { events.forEach((e) => window.removeEventListener(e, active)); document.removeEventListener("visibilitychange", check); clearInterval(t); };
+  }, [token, call, signOut]);
 
   useEffect(() => { if (fromLink) window.history.replaceState({}, "", "/admin"); }, [fromLink]);
 
-  // Open the order from the email link once signed in
+  // ---------- shared policy list ----------
+  const loadShared = useCallback(() => call({ action: "policies" }).then(
+    (r) => setShared({ on: !!r.enabled, list: r.policies || [], err: "", loading: false }),
+    (x) => {
+      if (x.status === 401) { onSignedOut(); return; }
+      setShared({ on: false, list: [], err: x.status ? x.message : "no internet", loading: false });
+    },
+  ), [call, onSignedOut]);
+  useEffect(() => {
+    if (!token) return;
+    let live = true;
+    call({ action: "policies" })
+      .then((r) => live && setShared({ on: !!r.enabled, list: r.policies || [], err: "", loading: false }))
+      .catch((x) => { if (!live) return; if (x.status === 401) onSignedOut(); else setShared({ on: false, list: [], err: x.status ? x.message : "no internet", loading: false }); });
+    return () => { live = false; };
+  }, [token, call, onSignedOut]);
+
+  const activityKey = useMemo(() => shared.list.map((p) => `${p.policy_id || p.key}:${p.status}:${(p.history || []).length}`).join("|"), [shared.list]);
+  const localOnly = useMemo(
+    () => (shared.on ? log.filter((e) => ["SUCCESS", "CANCELLED", "UNKNOWN"].includes(e.status) && !shared.list.some((s) => samePolicy(s, e))) : []),
+    [log, shared],
+  );
+  const allPolicies = useMemo(() => {
+    const list = shared.on ? [...shared.list, ...localOnly.map((e) => ({ ...e, _localOnly: true }))] : log;
+    return [...list].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+  }, [shared, localOnly, log]);
+
+  const importLocal = async () => {
+    setImporting(true);
+    try {
+      const r = await call({ action: "import-policies", policies: localOnly });
+      setMsg({ kind: "ok", text: `${r.added} ${r.added === 1 ? "policy" : "policies"} moved to the shared list. Everyone can now see them.` });
+      await loadShared();
+    } catch (x) { if (x.status === 401) onSignedOut(); else setMsg({ kind: "err", text: x.status ? x.message : "No internet connection. Try again." }); }
+    finally { setImporting(false); }
+  };
+
+  // ---------- open the order from the email link once signed in ----------
   useEffect(() => {
     if (!token || !pending) return;
     let live = true;
-    const done = (order, state) => { if (!live) return; setO({ ...blank(), ...order }); setLinkState(state); setPending(null); setResult(null); setPaid(false); setErrors({}); };
+    const done = (order, state) => { if (!live) return; setO({ ...blank(), ...order }); setLinkState(state); setPending(null); setResult(null); setChecks(noChecks()); setErrors({}); };
     if (pending.lock) {
-      api("/api/admin", { method: "POST", token, body: { action: "open", lock: pending.lock } })
+      call({ action: "open", lock: pending.lock })
         .then((r) => done(r.order, "genuine"))
-        .catch((x) => { if (x.status === 401) signOut(); else if (live) { setPending(null); setLinkState("changed"); setMsg({ kind: "err", text: x.message }); } });
+        .catch((x) => { if (x.status === 401) onSignedOut(); else if (live) { setPending(null); setLinkState("changed"); setMsg({ kind: "err", text: x.message }); } });
     } else {
       const dec = decodeOrder(pending.d) || {};
       // older (v20) links: names in one field, no NIN or LGA
       const [firstname, ...rest] = String(dec.insured_name || "").split(" ");
       const order = { ...dec, firstname, lastname: rest.join(" "), state: dec.zone === "FCT Abuja" ? "FCT" : dec.zone || "Lagos" };
-      api("/api/admin", { method: "POST", token, body: { action: "verify", order: dec, sig: pending.sig } })
+      call({ action: "verify", order: dec, sig: pending.sig })
         .then((r) => done(order, r.valid ? "old" : "changed"))
-        .catch((x) => { if (x.status === 401) signOut(); else done(order, "changed"); });
+        .catch((x) => { if (x.status === 401) onSignedOut(); else done(order, "changed"); });
     }
     return () => { live = false; };
-  }, [token, pending]);
+  }, [token, pending, call, onSignedOut]);
 
   // NPF's lists for the pickers
   useEffect(() => {
     if (!token || lists) return;
     let live = true;
-    api("/api/admin", { method: "POST", token, body: { action: "staff-lists" } })
+    call({ action: "staff-lists" })
       .then((r) => live && setLists(r))
-      .catch((x) => { if (x.status === 401) signOut(); else if (live) setListErr(x.status ? x.message : "No internet connection."); });
+      .catch((x) => { if (x.status === 401) onSignedOut(); else if (live) setListErr(x.status ? x.message : "No internet connection."); });
     return () => { live = false; };
-  }, [token, lists]);
+  }, [token, lists, call, onSignedOut]);
 
   const prod = PRODUCTS[o.product] || PRODUCTS.private_motor;
   const makes = useMemo(() => {
@@ -198,8 +198,14 @@ const AdminPage = ({ navigate }) => {
   const name = insuredName(o);
   const issued = result?.status === "SUCCESS";
   const blockedUnknown = result?.status === "UNKNOWN" && !unknownOverride;
+  const plateWarn = plateWarnings(o.reg_no);
+  const allChecked = checks.paid && checks.plate && checks.identity;
 
-  const set = (k, v) => { setO((p) => ({ ...p, [k]: v })); setErrors((e) => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; }); };
+  const set = (k, v) => {
+    setO((p) => ({ ...p, [k]: v }));
+    setErrors((e) => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; });
+    if (k === "reg_no") setChecks((c) => ({ ...c, plate: false })); // plate changed: check it again
+  };
   const chooseMake = (v) => { setErrors((e) => ({ ...e, vehicle_make_id: undefined })); const m = makes.find((x) => String(x.id) === v); setO((p) => ({ ...p, vehicle_make_id: v, vehicle_make: m?.name || p.vehicle_make, vehicle_model_id: "", vehicle_model: "" })); };
   const chooseModel = (v) => { const m = models.find((x) => String(x.id) === v); setO((p) => ({ ...p, vehicle_model_id: v, vehicle_model: m?.name || "" })); };
   const chooseBody = (v) => { setErrors((e) => ({ ...e, body_type_id: undefined })); const b = lists?.body_types.find((x) => String(x.id) === v); setO((p) => ({ ...p, body_type_id: v, vehicle_type: b?.name || p.vehicle_type })); };
@@ -207,17 +213,21 @@ const AdminPage = ({ navigate }) => {
   const login = async (e) => {
     e.preventDefault(); setErr("");
     if (!pw) { setErr("Enter the staff password."); return; }
+    if (needsCode && !/^\d{6}$/.test(code)) { setErr("Enter the 6-digit code from the authenticator app."); return; }
     setSigningIn(true);
     try {
-      const r = await api("/api/admin", { method: "POST", body: { action: "login", password: pw } });
-      try { sessionStorage.setItem("rt_admin", r.token); } catch { /* ignore */ }
-      setToken(r.token); setPw("");
+      const r = await api("/api/admin", { method: "POST", body: { action: "login", password: pw, code } });
+      saveToken(r.token); setPw(""); setCode("");
     } catch (x) { setErr(x.status ? x.message : "No internet connection. Check your network and try again."); }
     finally { setSigningIn(false); }
   };
 
   const addLog = (entry) => { const next = [entry, ...readLog()]; writeLog(next); setLog(next); };
-  const patchLog = (key, patch) => { const next = readLog().map((e) => (e.key === key ? { ...e, ...patch } : e)); writeLog(next); setLog(next); };
+  const onPatched = (entry, patch) => {
+    const next = readLog().map((e) => (samePolicy(e, entry) ? { ...e, ...patch } : e));
+    writeLog(next); setLog(next);
+    if (shared.on) loadShared();
+  };
 
   const sendNpf = async () => {
     if (busyRef.current || issued || blockedUnknown) return;
@@ -225,14 +235,14 @@ const AdminPage = ({ navigate }) => {
     const v = validateOrder(o, { allowPastStart: true, strict: true });
     setErrors(v.errors);
     if (!v.ok) { setMsg({ kind: "err", text: "Fix the fields marked in red first." }); return; }
-    if (!paid) { setMsg({ kind: "err", text: "Tick the box to confirm the money is in the Jaiz Bank account." }); return; }
-    const sameRef = o.reference && log.find((e) => e.reference === o.reference && e.status === "SUCCESS");
+    if (!allChecked) { setMsg({ kind: "err", text: "Tick all three checks before sending: money confirmed, plate checked, name and NIN checked." }); return; }
+    const sameRef = o.reference && allPolicies.find((e) => e.reference === o.reference && e.status === "SUCCESS");
     if (sameRef) { setMsg({ kind: "err", text: `Order ${o.reference} was already issued as ${sameRef.policy_number}. It cannot be sent twice.` }); return; }
-    const samePlate = log.find((e) => e.status === "SUCCESS" && e.reg_no === v.value.reg_no && e.end_date >= todayLagos());
+    const samePlate = allPolicies.find((e) => e.status === "SUCCESS" && e.reg_no === v.value.reg_no && e.end_date >= todayLagos());
     if (samePlate && !window.confirm(`${samePlate.reg_no} already has a valid policy (${samePlate.policy_number}, until ${longDate(samePlate.end_date)}). Issue another one for the same plate?`)) return;
     if (!window.confirm(`Send ${prod.short} for ${name} (${v.value.reg_no}) to NPF now? This creates a real policy and uses 1 unit.`)) return;
 
-    busyRef.current = true; setBusy("npf"); setResult(null); setUnknownOverride(false);
+    busyRef.current = true; setBusy("npf"); setResult(null);
     const base = {
       key: `${Date.now()}`, at: new Date().toISOString(), reference: o.reference || "", product: v.value.product, premium: prod.premium,
       name, insured_type: v.value.insured_type, firstname: v.value.firstname, lastname: v.value.lastname, nin_masked: maskNin(v.value.nin),
@@ -241,10 +251,13 @@ const AdminPage = ({ navigate }) => {
       start_date: v.value.start_date, end_date: addYearMinusDay(v.value.start_date),
     };
     try {
-      const r = await api("/api/admin", { method: "POST", token, body: { action: "npf", order: o } });
+      const r = await call({ action: "npf", order: o, key: base.key, confirmed_not_created: unknownOverride });
+      setUnknownOverride(false);
       setResult({ ...r, entry: { ...base, policy_id: r.policy_id, policy_number: r.policy_number, certificate_no: r.certificate_no } });
       if (r.status === "SUCCESS" || r.status === "UNKNOWN") {
         addLog({ ...base, policy_id: r.policy_id || null, policy_number: r.policy_number || "", certificate_no: r.certificate_no || "", status: r.status, message: r.message });
+        if (shared.on && !r.shared) setMsg({ kind: "err", text: "NPF answered, but the policy could not be saved to the shared list. It is saved on this device: press \"Move them to the shared list\" below when the connection is back." });
+        if (shared.on) loadShared();
       }
     } catch (x) {
       if (x.status === 401) { signOut("You were signed out for safety. Sign in again. Nothing was sent to NPF."); return; }
@@ -261,7 +274,9 @@ const AdminPage = ({ navigate }) => {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(`${kind}-${policyId}`); setMsg(null);
     try {
-      const res = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: "document", policy_id: policyId, kind }) });
+      const res = await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenRef.current}` }, body: JSON.stringify({ action: "document", policy_id: policyId, kind }) });
+      const fresh = res.headers.get("X-Session-Token");
+      if (fresh) { tokenRef.current = fresh; try { sessionStorage.setItem("rt_admin", fresh); } catch { /* ignore */ } }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         if (res.status === 401) { signOut("You were signed out for safety. Sign in again to download."); return; }
@@ -279,8 +294,8 @@ const AdminPage = ({ navigate }) => {
 
   const checkConn = async () => {
     setConn({ loading: true });
-    try { setConn(await api("/api/admin", { method: "POST", token, body: { action: "check" } })); }
-    catch (x) { if (x.status === 401) signOut("You were signed out for safety. Please sign in again."); else setConn({ error: x.status ? x.message : "No internet connection." }); }
+    try { setConn(await call({ action: "check" })); }
+    catch (x) { if (x.status === 401) onSignedOut(); else setConn({ error: x.status ? x.message : "No internet connection." }); }
   };
 
   const loadPasted = () => {
@@ -290,16 +305,7 @@ const AdminPage = ({ navigate }) => {
     setPending(e ? { lock: e } : { d, sig: paste.match(/[?&]s=([A-Za-z0-9_-]+)/)?.[1] || "" }); setPaste(""); setMsg(null);
   };
 
-  const newSale = () => { setO(blank()); setLinkState(null); setPaid(false); setErrors({}); setMsg(null); setResult(null); setUnknownOverride(false); };
-
-  const copyRow = async (e) => { try { await navigator.clipboard.writeText(toRow(e).map((x) => x ?? "").join("\t")); setMsg({ kind: "ok", text: "Row copied. Paste it into the spreadsheet." }); } catch { setMsg({ kind: "err", text: "Could not copy. Use Download CSV instead." }); } };
-  const downloadCsv = () => {
-    const q = (v) => { let s = String(v ?? ""); if (/^[=+\-@]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
-    const csv = [COLS, ...log.map(toRow)].map((r) => r.map(q).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a"); a.href = url; a.download = `risktech-motor-log-${todayLagos()}.csv`; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  };
+  const newSale = () => { setO(blank()); setLinkState(null); setChecks(noChecks()); setErrors({}); setMsg(null); setResult(null); setUnknownOverride(false); };
 
   if (!token) {
     return (
@@ -309,6 +315,9 @@ const AdminPage = ({ navigate }) => {
           <h1 className="text-xl font-bold text-gray-900 mb-1">Staff sign in</h1>
           <p className="text-gray-500 text-sm mb-5">{fromLink ? "Sign in to open this order." : "Issue NPF motor policies."}</p>
           <input type="password" autoFocus autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {needsCode && (
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6-digit code from the authenticator app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm mb-3 tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" data-testid="login-code" />
+          )}
           {err && <p className="text-red-600 text-sm mb-3">{err}</p>}
           <button disabled={signingIn} className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white font-bold py-3 rounded-xl">{signingIn ? "Checking..." : "Sign in"}</button>
           <button type="button" onClick={() => navigate("home")} className="w-full text-gray-500 text-sm mt-3">Back to website</button>
@@ -319,6 +328,7 @@ const AdminPage = ({ navigate }) => {
 
   const locked = issued || busy === "npf";
   const fp = { o, set, errors, locked };
+  const cp = { checks, setChecks, locked };
   const sel = (k) => input + (errors[k] ? " border-red-400" : " border-gray-300");
   return (
     <div className="min-h-screen bg-gray-100">
@@ -327,7 +337,7 @@ const AdminPage = ({ navigate }) => {
           <h1 className="font-bold text-base sm:text-lg whitespace-nowrap">Issue NPF policy</h1>
           <div className="flex items-center gap-2">
             <button onClick={newSale} className="text-xs bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg whitespace-nowrap">New sale</button>
-            <button onClick={() => signOut()} className="p-2 bg-white/15 hover:bg-white/25 rounded-lg" aria-label="Sign out"><LogOut size={16} /></button>
+            <button onClick={() => signOut("", "manual")} className="p-2 bg-white/15 hover:bg-white/25 rounded-lg" aria-label="Sign out"><LogOut size={16} /></button>
           </div>
         </div>
       </div>
@@ -381,6 +391,7 @@ const AdminPage = ({ navigate }) => {
           {linkState === "genuine" && <p className="flex items-center gap-1.5 text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm mb-3"><ShieldCheck size={15} /> Genuine order from the website. The link has not been changed.</p>}
           {linkState === "old" && <p className="flex items-start gap-1.5 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-3"><ShieldAlert size={15} className="mt-0.5 flex-shrink-0" /> Order from the old form: get the customer's NIN, LGA and NPF make and body type on WhatsApp, then fill them in.</p>}
           {linkState === "changed" && <p className="flex items-start gap-1.5 text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm mb-3"><ShieldAlert size={15} className="mt-0.5 flex-shrink-0" /> Warning: this link was changed or did not come from the website. Check every detail against the customer's papers before sending.</p>}
+          {paused[o.product] && <p className="flex items-center gap-1.5 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-3"><PauseCircle size={15} /> {prod.short} is paused on the website. You can still issue here if NPF has units.</p>}
           {issued && <p className="flex items-center gap-1.5 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3"><Lock size={14} /> NPF issued this policy, so the details are locked. Use "Correct details" in the list below to change anything, or press "New sale".</p>}
           {listErr && !lists && <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-3">Could not load NPF's lists ({listErr}). Press "Check NPF connection".</p>}
 
@@ -416,7 +427,10 @@ const AdminPage = ({ navigate }) => {
             <F label="LGA" k="lga" {...fp}>
               <select disabled={locked || !o.state} className={sel("lga")} value={o.lga} onChange={(e) => set("lga", e.target.value)}><option value="">Select</option>{(LGAS[o.state] || []).map((l) => <option key={l}>{l}</option>)}</select>
             </F>
-            <F label="Plate number" k="reg_no" {...fp} />
+            <F label="Plate number" k="reg_no" {...fp}>
+              <input disabled={locked} className={sel("reg_no") + " uppercase"} value={o.reg_no || ""} onChange={(e) => set("reg_no", e.target.value.toUpperCase())} data-testid="staff-plate" />
+              {plateWarn.map((w) => <p key={w} className="text-amber-700 text-[11px] mt-0.5" data-testid="staff-plate-warn">⚠ {w}</p>)}
+            </F>
             <F label="Make (NPF list)" k="vehicle_make_id" {...fp} hint={!o.vehicle_make_id && o.vehicle_make ? `Customer typed: ${o.vehicle_make}` : ""}>
               <select disabled={locked || !lists} className={sel("vehicle_make_id")} value={o.vehicle_make_id} onChange={(e) => chooseMake(e.target.value)} data-testid="staff-make"><option value="">{lists ? "Select" : "Loading..."}</option>{makes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
             </F>
@@ -438,16 +452,23 @@ const AdminPage = ({ navigate }) => {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="font-bold text-gray-900 mb-3">Payment and NPF</p>
-          <label className="flex items-start gap-2 text-sm text-gray-800">
-            <input type="checkbox" className="mt-1" checked={paid} disabled={locked} onChange={(e) => setPaid(e.target.checked)} />
-            <span>I have checked the Jaiz Bank account and {naira(prod.premium)}{o.reference ? ` with narration ${o.reference}` : ""} has arrived.</span>
-          </label>
+          <p className="font-bold text-gray-900 mb-1">Checks before sending</p>
+          <p className="text-xs text-gray-500 mb-3">All three must be ticked. Changing the plate number clears the plate tick.</p>
+          <div className="space-y-2.5" data-testid="checklist">
+            <Check k="paid" {...cp}>Money confirmed: <b>{naira(prod.premium)}</b>{o.reference ? <> with narration <b>{o.reference}</b></> : ""} has arrived in the Jaiz Bank account.</Check>
+            <Check k="plate" {...cp}>
+              Plate checked against the customer's vehicle papers or photo:
+              <span className="block mt-1 font-mono text-xl font-extrabold tracking-[0.2em] text-gray-950" data-testid="check-plate-big">{o.reg_no || "—"}</span>
+              {plateWarn.length > 0 && <span className="block text-amber-700 text-xs mt-0.5">⚠ {plateWarn[0]}</span>}
+            </Check>
+            <Check k="identity" {...cp}>Name (<b>{name || "—"}</b>) and NIN (<b>{maskNin(o.nin) || "—"}</b>) match the customer's ID.</Check>
+          </div>
 
-          <button disabled={!!busy || issued || blockedUnknown} onClick={sendNpf}
-            className={`mt-4 w-full flex items-center justify-center gap-2 text-sm font-bold px-4 py-3.5 rounded-xl text-white disabled:cursor-not-allowed ${issued ? "bg-green-700" : "bg-green-600 hover:bg-green-700 disabled:opacity-60"}`}>
+          <button disabled={!!busy || issued || blockedUnknown || !allChecked} onClick={sendNpf}
+            className={`mt-4 w-full flex items-center justify-center gap-2 text-sm font-bold px-4 py-3.5 rounded-xl text-white disabled:cursor-not-allowed ${issued ? "bg-green-700" : "bg-green-600 hover:bg-green-700 disabled:opacity-50"}`} data-testid="send-npf">
             {busy === "npf" ? <><Loader2 size={16} className="animate-spin" /> Sending to NPF... do not close this page</> : issued ? <><CheckCircle size={16} /> Issued by NPF</> : <><Send size={16} /> Send to NPF (issues the policy)</>}
           </button>
+          {!allChecked && !issued && <p className="text-gray-500 text-xs mt-2 text-center">Tick all three checks to unlock this button.</p>}
 
           {result && (
             <div className={`mt-4 border rounded-xl p-4 text-sm ${STYLE[result.status] || STYLE.FAILED}`} data-testid="npf-result">
@@ -468,6 +489,9 @@ const AdminPage = ({ navigate }) => {
                 </div>
               )}
               {result.message && !issued && <p className="mt-2"><span className="font-semibold">NPF said:</span> {result.message}</p>}
+              {result.httpStatus === 402 && shared.on && !paused[o.product] && (
+                <p className="mt-2 text-xs">Tip: pause {prod.short} in "Website and security settings" below until NPF loads units, so customers don't pay for cover we can't issue.</p>
+              )}
               {result.raw && !issued && (
                 <details className="mt-2"><summary className="cursor-pointer font-semibold">Show NPF's full reply (for Aliyu or IT)</summary>
                   <pre className="mt-2 whitespace-pre-wrap break-all bg-white/70 rounded-lg p-2 text-xs">{result.raw}{result.httpStatus ? `\n\nHTTP ${result.httpStatus}` : ""}</pre>
@@ -483,38 +507,17 @@ const AdminPage = ({ navigate }) => {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <p className="font-bold text-gray-900">Issued on this device ({log.length})</p>
-            {log.length > 0 && <button onClick={downloadCsv} className="flex items-center gap-1.5 text-sm font-semibold text-blue-700"><Download size={15} /> Download CSV for the spreadsheet</button>}
-          </div>
-          {!log.length && <p className="text-gray-500 text-sm">Nothing yet. Each policy NPF issues appears here, so you can download documents again, correct or cancel, and copy it into the office spreadsheet.</p>}
-          <div className="space-y-2">
-            {log.map((e) => (
-              <div key={e.key} className="border border-gray-100 rounded-lg p-3 text-sm">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 break-words">{e.policy_number || "(no policy number)"} &middot; {e.name} &middot; {e.reg_no}</p>
-                    <p className="text-gray-500 text-xs break-words">{e.certificate_no ? `${e.certificate_no} · ` : ""}{naira(e.premium)} &middot; {e.at?.slice(0, 10)} &middot; <span className={e.status === "SUCCESS" ? "text-green-700 font-semibold" : e.status === "CANCELLED" ? "text-red-700 font-semibold" : "text-amber-700 font-semibold"}>{e.status === "UNKNOWN" ? "NO ANSWER: ask NPF before sending again" : e.status}</span>{e.message ? ` (${e.message})` : ""}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => copyRow(e)} className="flex items-center gap-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5"><Copy size={12} /> Copy row</button>
-                    {e.policy_id && e.status !== "UNKNOWN" && (
-                      <>
-                        <button disabled={!!busy} onClick={() => download(e.policy_id, "certificate")} className="flex items-center gap-1 text-xs border border-blue-300 text-blue-700 rounded-lg px-2.5 py-1.5"><FileDown size={12} /> Certificate</button>
-                        <button disabled={!!busy} onClick={() => download(e.policy_id, "brown-card")} className="flex items-center gap-1 text-xs border border-amber-400 text-amber-800 rounded-lg px-2.5 py-1.5"><FileDown size={12} /> Brown Card</button>
-                      </>
-                    )}
-                    {e.status === "SUCCESS" && <a href={waCustomer(e)} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs bg-[#25D366] text-white rounded-lg px-2.5 py-1.5"><MessageCircle size={12} /> WhatsApp customer</a>}
-                  </div>
-                </div>
-                {e.status === "SUCCESS" && e.policy_id && (
-                  <div className="mt-2"><PolicyActions entry={e} token={token} lists={lists} onDone={(patch) => patchLog(e.key, patch)} onSignedOut={() => signOut("You were signed out for safety. Please sign in again.")} /></div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <PolicyList
+          policies={allPolicies} sharedOn={shared.on} sharedErr={shared.err} loading={shared.loading} localOnly={localOnly}
+          onImport={importLocal} importing={importing} onRefresh={() => { setShared((s) => ({ ...s, loading: true })); loadShared(); }} busy={busy} download={download} call={call}
+          lists={lists} onPatched={onPatched} onSignedOut={onSignedOut} setMsg={setMsg}
+        />
+
+        <MonthlyReport policies={allPolicies} />
+
+        <ActivityPanel call={call} onSignedOut={onSignedOut} refreshKey={activityKey} />
+
+        <SettingsPanel call={call} onSignedOut={onSignedOut} onPausedChange={setPausedState} />
       </div>
     </div>
   );

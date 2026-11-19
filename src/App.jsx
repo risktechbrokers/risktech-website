@@ -18,9 +18,10 @@ const CompanyProfilePage= lazy(() => import("./pages/CompanyProfilePage"));
 const ClaimsPage        = lazy(() => import("./pages/ClaimsPage"));
 const BuyPage           = lazy(() => import("./pages/BuyPage"));
 const AdminPage         = lazy(() => import("./pages/AdminPage"));
+const LegalPage         = lazy(() => import("./pages/LegalPage"));
 
 // Real URLs so pages can be linked to directly (e.g. /buy, /admin)
-const PATHS = { home: "/", services: "/services", "company-profile": "/company-profile", claims: "/claims", buy: "/buy", admin: "/admin" };
+const PATHS = { home: "/", services: "/services", "company-profile": "/company-profile", claims: "/claims", buy: "/buy", admin: "/admin", terms: "/terms", privacy: "/privacy" };
 const pageFromPath = () => {
   const p = window.location.pathname.replace(/\/+$/, "") || "/";
   return Object.keys(PATHS).find((k) => PATHS[k] === p) || "home";
@@ -107,6 +108,15 @@ function App() {
           <main className="pt-16">
             <Suspense fallback={<PageLoader/>}>
               <BuyPage navigate={navigate} />
+            </Suspense>
+            <Footer navigate={navigate} />
+          </main>
+        )}
+
+        {(currentPage === "terms" || currentPage === "privacy") && (
+          <main className="pt-16">
+            <Suspense fallback={<PageLoader/>}>
+              <LegalPage kind={currentPage} navigate={navigate} />
             </Suspense>
             <Footer navigate={navigate} />
           </main>

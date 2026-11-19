@@ -152,6 +152,10 @@ const Footer = ({ navigate = () => {} }) => {
           <p>
             © {currentYear} RiskTech Insurance Brokers Limited. All rights reserved.
           </p>
+          <p className="flex items-center gap-4">
+            <button onClick={() => navigate("terms")} className="hover:text-white transition-colors">Terms and Refunds</button>
+            <button onClick={() => navigate("privacy")} className="hover:text-white transition-colors">Privacy</button>
+          </p>
           <p className="flex items-center gap-1">
             Licensed under the Nigerian Insurance Industry Reform Act 2025
           </p>

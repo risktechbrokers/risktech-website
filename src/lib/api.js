@@ -1,5 +1,7 @@
 // Helpers for the staff endpoint and formatting.
-export async function api(path, { method = "GET", body, token } = {}) {
+// onToken: the staff page passes a function that saves the refreshed login the server sends back
+// (each request restarts the 30-minute idle window).
+export async function api(path, { method = "GET", body, token, onToken } = {}) {
   const res = await fetch(path, {
     method,
     headers: {
@@ -8,6 +10,8 @@ export async function api(path, { method = "GET", body, token } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  const fresh = res.headers.get("X-Session-Token");
+  if (fresh && onToken) onToken(fresh);
   let data = null;
   try { data = await res.json(); } catch { /* non-JSON */ }
   if (!res.ok) {

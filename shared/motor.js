@@ -168,3 +168,33 @@ export const waLink = (text) => `https://wa.me/${WHATSAPP}?text=${encodeURICompo
 
 // Masks a NIN for display: 12345678901 -> *******8901
 export const maskNin = (n) => (n ? '*'.repeat(Math.max(0, String(n).length - 4)) + String(n).slice(-4) : '');
+
+// ---------- Plate number check ----------
+// Standard Nigerian plates are 3 letters, 3 digits, 2 letters (e.g. ABC123XY).
+// Some plates (government, diplomatic, older) look different, so this only WARNS, it never blocks.
+const TO_LETTER = { 0: 'O', 1: 'I', 2: 'Z', 5: 'S', 6: 'G', 8: 'B' };
+const TO_DIGIT = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', G: '6', B: '8' };
+
+export function plateWarnings(raw) {
+  const p = String(raw ?? '').toUpperCase().replace(/[\s-]/g, '');
+  if (p.length < 5) return [];
+  const out = [];
+  if (p.length === 8) {
+    [...p].forEach((ch, i) => {
+      const letterSlot = i < 3 || i > 5;
+      const pos = i + 1;
+      if (letterSlot && /\d/.test(ch)) {
+        out.push(`Character ${pos} is "${ch}", but it is usually a letter here.${TO_LETTER[ch] ? ` Did you mean "${TO_LETTER[ch]}"?` : ''}`);
+      } else if (!letterSlot && /[A-Z]/.test(ch)) {
+        out.push(`Character ${pos} is "${ch}", but it is usually a number here.${TO_DIGIT[ch] ? ` Did you mean "${TO_DIGIT[ch]}"?` : ''}`);
+      }
+    });
+  }
+  if (!/^[A-Z]{3}\d{3}[A-Z]{2}$/.test(p) && !out.length) {
+    out.push('Most Nigerian plates look like ABC123XY (3 letters, 3 numbers, 2 letters). Please check it is exactly as on the vehicle papers.');
+  }
+  return out;
+}
+
+// Characters that are easy to mix up when typing a plate
+export const CONFUSABLE = /[0OQDI1LZ2S5G6B8]/;
